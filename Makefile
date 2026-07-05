@@ -8,6 +8,10 @@
 #   make drift         report files that differ from ai-template-repo
 #   make lint | build | test | typecheck | format | audit
 #   make status        git dirty/ahead-behind snapshot per repo
+#   make health        lint+typecheck+build(+test), one pass/fail per repo
+#   make git-doctor    find (and --fix removes) stray .git internal files/broken refs
+#   make renovate-status   aggregate each repo's Dependency Dashboard backlog
+#   make report        full morning report: dashboard + git health + secrets + renovate + live CI
 #
 # Target one repo:  make lint REPO=guess
 
@@ -16,7 +20,7 @@ NODE := node
 REPO ?=
 REPOFLAG := $(if $(REPO),--repo=$(REPO),)
 
-.PHONY: help doctor sync sync-apply drift dashboard new-repo lint build test typecheck format audit outdated status
+.PHONY: help doctor sync sync-apply drift dashboard new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status report report-quick secrets-audit secrets-sync secrets-sync-apply
 
 help:
 	@echo "Meta-workspace targets:"
@@ -28,7 +32,16 @@ help:
 	@echo "  make dashboard     generate dashboard.html (consistency scorecard)"
 	@echo "  make new-repo NAME=x [TYPE=node|python]   scaffold a consistent new repo"
 	@echo "  make lint|build|test|typecheck|format|audit   fan out across repos"
+	@echo "  make health        lint+typecheck+build(+test) per repo, one pass/fail each"
 	@echo "  make outdated      snapshot of outdated npm/pnpm deps per repo"
+	@echo "  make secrets-audit         cross-check workflow secrets.X refs against configured GitHub secrets"
+	@echo "  make secrets-sync         dry-run: what tools/sync-secrets.mjs would push from .secrets.local.json"
+	@echo "  make secrets-sync-apply   actually push shared secrets via gh secret set"
+	@echo "  make git-doctor            find stray .git internal files / broken refs (report only)"
+	@echo "  make git-doctor-fix        same, but delete what it finds"
+	@echo "  make renovate-status       aggregate each repo's Dependency Dashboard pending-update count"
+	@echo "  make report                full morning report (dashboard + git health + secrets + renovate + live CI)"
+	@echo "  make report-quick          same, local-only (no GitHub API calls)"
 	@echo "  add REPO=name to scope to one repo (e.g. make lint REPO=guess)"
 
 doctor:
@@ -75,3 +88,30 @@ outdated:
 
 status:
 	@$(NODE) tools/repo-run.mjs status $(REPOFLAG)
+
+secrets-audit:
+	@$(NODE) tools/audit-secrets.mjs $(REPOFLAG)
+
+secrets-sync:
+	@$(NODE) tools/sync-secrets.mjs $(REPOFLAG)
+
+secrets-sync-apply:
+	@$(NODE) tools/sync-secrets.mjs --apply $(REPOFLAG)
+
+health:
+	@$(NODE) tools/repo-run.mjs health $(REPOFLAG)
+
+git-doctor:
+	@$(NODE) tools/git-doctor.mjs $(REPOFLAG)
+
+git-doctor-fix:
+	@$(NODE) tools/git-doctor.mjs --fix $(REPOFLAG)
+
+renovate-status:
+	@$(NODE) tools/renovate-status.mjs $(REPOFLAG)
+
+report:
+	@$(NODE) tools/status.mjs
+
+report-quick:
+	@$(NODE) tools/status.mjs --quick

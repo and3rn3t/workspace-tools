@@ -11,6 +11,7 @@
 //   node tools/repo-run.mjs audit       # pnpm/npm audit, or pip-audit
 //   node tools/repo-run.mjs doctor      # print each repo's type + available scripts
 //   node tools/repo-run.mjs status      # git dirty/ahead-behind snapshot per repo
+//   node tools/repo-run.mjs health      # lint + typecheck + build (+test), one pass/fail per repo
 //   node tools/repo-run.mjs <cmd> --repo=guess   # limit to one repo
 //
 // Node commands map to package.json scripts (aliases below cover naming drift
@@ -29,7 +30,7 @@ const cmd = args[0];
 const onlyRepo = (args.find(a => a.startsWith('--repo=')) || '').split('=')[1];
 
 if (!cmd || cmd.startsWith('--')) {
-  console.error('usage: node tools/repo-run.mjs <lint|build|test|typecheck|format|audit|outdated|doctor|status> [--repo=name]');
+  console.error('usage: node tools/repo-run.mjs <lint|build|test|typecheck|format|audit|outdated|doctor|status|health> [--repo=name]');
   process.exit(2);
 }
 
@@ -66,6 +67,11 @@ function repos() {
 function run(cwd, file, argv) {
   const r = spawnSync(file, argv, { cwd, stdio: 'inherit', shell: false });
   return r.status === 0;
+}
+
+function runQuiet(cwd, file, argv) {
+  const r = spawnSync(file, argv, { cwd, encoding: 'utf8', shell: false });
+  return { ok: r.status === 0, output: (r.stdout || '') + (r.stderr || '') };
 }
 
 if (cmd === 'doctor') {
@@ -119,6 +125,54 @@ if (cmd === 'status') {
   console.log(`${C.dim}────────────────────────────────────────${C.reset}`);
   console.log(`${dirtyCount} repo(s) with uncommitted changes, ${aheadCount} repo(s) with unpushed commits.`);
   process.exit(0);
+}
+
+if (cmd === 'health') {
+  // Lightweight polyrepo CI surrogate: run lint + typecheck + build (node) or
+  // ruff + pytest (python) per repo, one pass/fail per repo rather than one
+  // per sub-command. Quiet by default — only failing repos print output.
+  const NODE_STEPS = ['lint', 'typecheck', 'build'];
+  const results = [];
+  for (const repo of repos()) {
+    const cwd = join(ROOT, repo);
+    const d = detect(cwd);
+    if (!d.isNode && !d.isPython) { results.push({ repo, status: 'skip', detail: 'no node/python tooling detected' }); continue; }
+
+    const steps = [];
+    if (d.isNode) {
+      for (const step of NODE_STEPS) {
+        const script = (NODE_SCRIPT_ALIASES[step] || [step]).find(s => d.scripts[s]);
+        if (script) steps.push({ name: `${d.pm} run ${script}`, file: d.pm, argv: ['run', script] });
+      }
+    }
+    if (d.isPython) {
+      if (spawnSync('command', ['-v', 'ruff'], { shell: true }).status === 0) steps.push({ name: 'ruff check .', file: 'ruff', argv: ['check', '.'] });
+      if (spawnSync('command', ['-v', 'pytest'], { shell: true }).status === 0) steps.push({ name: 'pytest -q', file: 'pytest', argv: ['-q'] });
+    }
+    if (steps.length === 0) { results.push({ repo, status: 'skip', detail: 'no runnable steps found' }); continue; }
+
+    let failedStep = null, output = '';
+    for (const s of steps) {
+      const r = runQuiet(cwd, s.file, s.argv);
+      if (!r.ok) { failedStep = s.name; output = r.output; break; }
+    }
+    results.push(failedStep
+      ? { repo, status: 'fail', detail: failedStep, output }
+      : { repo, status: 'pass', detail: steps.map(s => s.name).join(' → ') });
+  }
+
+  for (const r of results) {
+    const tag = r.status === 'pass' ? `${C.green}PASS${C.reset}` : r.status === 'fail' ? `${C.red}FAIL${C.reset}` : `${C.dim}skip${C.reset}`;
+    console.log(`${tag}  ${C.cyan}${r.repo.padEnd(20)}${C.reset} ${C.dim}${r.detail}${C.reset}`);
+    if (r.status === 'fail' && r.output) {
+      const tail = r.output.trim().split('\n').slice(-8).join('\n');
+      console.log(`${C.dim}${tail.split('\n').map(l => '    ' + l).join('\n')}${C.reset}`);
+    }
+  }
+  const failed = results.filter(r => r.status === 'fail');
+  console.log(`${C.dim}────────────────────────────────────────${C.reset}`);
+  console.log(`${results.filter(r => r.status === 'pass').length} passed, ${failed.length} failed, ${results.filter(r => r.status === 'skip').length} skipped`);
+  process.exit(failed.length ? 1 : 0);
 }
 
 if (cmd === 'outdated') {

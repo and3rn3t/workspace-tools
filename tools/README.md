@@ -16,6 +16,12 @@ from the folder root via the top-level `Makefile`.
 | `make new-repo NAME=x TYPE=node\|python` | Scaffold a new sibling repo from the template so it starts 100% consistent |
 | `make lint` / `build` / `test` / `typecheck` / `format` / `audit` | Fan the command out across all repos, auto-detecting the package manager |
 | `make outdated` | Per-repo snapshot of outdated npm/pnpm deps, highlighting major bumps (needs installed deps; Python not included) |
+| `make secrets-audit` | Cross-check every repo's `.github/workflows/*.yml` for `secrets.X` references against the Actions secrets actually configured on GitHub (via `gh`/API) — flags what's referenced but never set |
+| `make secrets-sync` / `secrets-sync-apply` | Push shared secret values from a local, gitignored `.secrets.local.json` to many repos at once via `gh secret set`, instead of re-entering the same value per repo in the UI |
+| `make health` | Lint + typecheck + build (+ test) per repo, **one** pass/fail per repo instead of one per sub-command — a lightweight CI surrogate for the polyrepo setup |
+| `make git-doctor` / `git-doctor-fix` | Find (and optionally delete) stray duplicate files inside `.git/` — `index 2`, `HEAD 2`, broken refs, etc. Not cosmetic: these have twice broken `git fetch`/`status` outright this session |
+| `make renovate-status` | Aggregate every repo's Renovate "Dependency Dashboard" issue into one sorted view of pending major-bump approvals |
+| `make report` / `report-quick` | One consolidated "morning report": dashboard + git health + local git status + secrets audit + Renovate backlog + live CI status. `-quick` skips anything needing the GitHub API |
 
 ## Automation
 
@@ -57,6 +63,13 @@ propagate to repos that are missing them.
 | `.github/workflows/gitleaks.yml` | all (incl. Xcode) | drift-tracked — scans every push/PR for committed secrets via `reusable-gitleaks.yml`. **Note**: `gitleaks-action@v2` is free for public repos but needs a `GITLEAKS_LICENSE` secret for private ones — confirm each repo's visibility before assuming this runs clean. |
 | `.github/workflows/stale.yml` | all (incl. Xcode) | not drift-tracked — hand-tune freely once created (see `weather-app`'s richer version) |
 | `.github/workflows/actionlint.yml` | all (incl. Xcode) | drift-tracked — validates every other workflow file against the real Actions schema |
+| `.github/pull_request_template.md` | all | skips repos already carrying either casing (`PULL_REQUEST_TEMPLATE.md` also recognized by GitHub) |
+| `.github/labels.yml`, `.github/workflows/label-sync.yml` | all | label taxonomy (type/status/priority/size); sync uses `delete-other-labels: false`, only adds/updates |
+| `.github/labeler.yml`, `.github/workflows/labeler.yml` | all | auto-labels PRs by changed file path |
+| `.github/release-drafter.yml`, `.github/workflows/release-drafter.yml` | all | drafts (never publishes) release notes from merged PR labels |
+| `.github/workflows/lighthouse.yml` | all | the disabled-by-default stub from `ai-template-repo` (workflow_dispatch only, no-op job) — **not** the org `workflow-templates` version, which actively schedules a run against a placeholder URL |
+| `.github/workflows/dependency-review.yml` | all | calls `and3rn3t/.github`'s reusable workflow; no-op if there's nothing to review |
+| `.github/workflows/codeql.yml` | node / python | language-specific source (`ai-template-repo` for JS/TS, `tools/templates/python/codeql.yml` for Python); not wired up for xcode/other types — Swift/C++ CodeQL needs a working build step first |
 
 **Not managed** (inherently repo-specific): `AGENTS.md`, `CLAUDE.md`, ESLint,
 `tsconfig`, Prettier, and the main CI workflow (`ci.yml`/`quality.yml`/etc. — every
@@ -144,6 +157,56 @@ jobs:
 
 When you change a canonical file in `ai-template-repo`, also update the matching
 copy under `.github/baseline/` so the guard checks against the new standard.
+
+## GitHub Actions secrets
+
+Two scripts close the loop between "what a workflow needs" and "what's
+actually configured on GitHub" — neither ever stores or prints a secret value.
+
+- **`tools/audit-secrets.mjs`** (read-only) — greps every repo's
+  `.github/workflows/*.yml` for `secrets.X` references, lists the Actions
+  secrets actually configured via the GitHub API, and reports the gap.
+  Auth: `$GH_TOKEN`/`$GITHUB_TOKEN`, or falls back to `gh auth token`.
+- **`tools/sync-secrets.mjs`** (write) — define a shared secret once in a
+  local, gitignored `.secrets.local.json` (start from
+  `.secrets.local.example.json`) with the value and which repos should get
+  it, then push to all of them via `gh secret set` in one pass instead of
+  re-entering the same value in the GitHub UI per repo. Requires the GitHub
+  CLI, authenticated. Refuses to run if `.secrets.local.json` isn't listed in
+  `.gitignore`. Dry-run by default; `--apply` to actually push.
+
+As of this tooling update, `make secrets-audit` found real gaps worth
+knowing about: `remote`'s `release.yml` (tag-triggered) and `weather-app`'s
+`android.yml`/`deploy-testflight.yml`/`deploy-playstore.yml` (path- and
+manually-triggered) reference Apple/Android signing secrets that aren't
+configured yet — those will fail the moment a real release or Android change
+triggers them, not on every regular push. `health` (Fastlane match),
+`net-traffic` (Codecov + Vite build vars), and `eslint-config` (`NPM_TOKEN`
+for publishing) have smaller gaps. `.secrets.local.example.json` is
+pre-filled with the `CODECOV_TOKEN`/`NPM_TOKEN` entries as a starting point.
+
+## Postmortem: the `permissions: {}` CI outage (fixed)
+
+`stale.yml`, `gitleaks.yml`, `consistency.yml`, and `actionlint.yml` were
+originally synced out with a top-level `permissions: {}`, on the (wrong)
+assumption that an empty caller permission block is safe when the actual job
+runs inside a called reusable workflow. It isn't: GitHub Actions caps what a
+`uses:`-called reusable workflow can request at whatever the **caller**
+grants at the top level. Since `reusable-stale.yml` needs `issues: write` +
+`pull-requests: write`, and the other three need `contents: read`, every one
+of these runs failed with `conclusion: startup_failure` — before a single
+job even started — across essentially the whole workspace. Only `codeql.yml`
+was unaffected, because its caller already granted explicit permissions.
+
+Fixed in `.github/workflow-templates/{stale,gitleaks,consistency,actionlint}.yml`
+and propagated to all ~30 repos already carrying these files (this is a
+correction to existing content, not a new-file sync, so it was a one-time
+manual overwrite + commit + push rather than `sync-apply`, which only ever
+creates missing files). Verified fixed via a live re-run (`flipper`'s
+Gitleaks run flipped from `startup_failure` to `success` immediately after
+the push). If you ever add another caller of a reusable workflow, give it
+the permissions the *called* workflow's job actually needs — `permissions: {}`
+is only safe if the reusable workflow requests nothing at all.
 
 ## Notes
 

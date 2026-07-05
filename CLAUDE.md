@@ -8,7 +8,7 @@ All of Matt's (and3rn3t) development projects. GitHub remotes live under `github
 - **Package managers**: pnpm for `and3rn3t`, `guess`, `health`; npm elsewhere.
 - **Python projects**: pyproject.toml-based, several double as OpenClaw/Claude skills (have a `SKILL.md`).
 - **iOS/macOS apps**: Xcode projects with `buildServer.json`; `weather-app` uses fastlane.
-- **Game dev**: `catastrophe` is an Unreal Engine 5 project — `tools/*.mjs` classify it as `other` (no package.json/pyproject.toml) and it has no CI template; it still receives the universal baseline files (`.editorconfig`, `SECURITY.md`, consistency guard).
+- **Game dev**: `catastrophe` is an Unreal Engine 5 project — `tools/*.mjs` classify it as `other` (no package.json/pyproject.toml) and it has no CI template; it still receives the universal baseline files (`.editorconfig`, `SECURITY.md`, consistency guard). `hack` is Rust (Cargo.toml) — also classified as `other` by the tooling (no Rust-specific type yet), same baseline-only treatment.
 - Per-repo detail lives in each repo's own `CLAUDE.md` where present (marked ✓ below).
 
 ## Web / Cloudflare Workers (React + TS)
@@ -28,6 +28,7 @@ All of Matt's (and3rn3t) development projects. GitHub remotes live under `github
 | `net-traffic` | NetInsight — network traffic analysis dashboard — npm |
 | `silas` | Personal website for Silas Anderson, with an embedded RPG game — npm |
 | `telescope` | JWST Deep Sky Explorer — 3D telescope visualization using NASA APIs (GitHub Spark template) — npm |
+| `sky` | Celestial-event discovery platform — location-aware night-sky alerts (GitHub Spark template, early stage) — npm |
 
 ## Python (CLI tools & skills)
 
@@ -38,6 +39,8 @@ All of Matt's (and3rn3t) development projects. GitHub remotes live under `github
 | `apple-photos-cleaner` | Photos library audit/cleanup via its SQLite DB — packaged as a skill (`SKILL.md`) |
 | `dbt` | Data science/analytics workspace — Python analysis + dbt transforms + notebooks |
 | `minecraft` | Minecraft server setup/control for Raspberry Pi 5, Docker-based |
+| `vac` | Connecting to a robotic vacuum without cloud services — mixed Python backend + npm mobile-app |
+| `network` | NetworkMonitor — UniFi API integration for network monitoring; Python backend + `workers/` (Cloudflare Workers) |
 
 ## iOS / macOS (Xcode)
 
@@ -53,6 +56,7 @@ All of Matt's (and3rn3t) development projects. GitHub remotes live under `github
 | Repo | What it is |
 |---|---|
 | `catastrophe` | "CATastrophe: A Mischief Simulator" — 3D open-world cat game, Unreal Engine 5 |
+| `hack` | "The Hack: Ghost Protocol" — horror-themed terminal hacking sim / CTF, Rust, deploys as a Cloudflare Worker |
 
 ## Templates, experiments & misc
 
@@ -64,6 +68,7 @@ All of Matt's (and3rn3t) development projects. GitHub remotes live under `github
 | `r-data` ✓ | R data-analysis workspace with example scripts |
 | `docker-playground` | docker-playground experiments |
 | `reddit` | daily-briefing experiment (Reddit + news digest skill) |
+| `eslint-config` | Shared ESLint 9 flat config package for and3rn3t React + TypeScript repos — private, npm |
 
 ## Notes for Claude
 

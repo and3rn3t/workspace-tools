@@ -1,6 +1,7 @@
 .DS_Store
 *.tmp
 node_modules/
+.secrets.local.json
 dashboard.html
 Printer/
 ai-template-repo/
@@ -33,3 +34,7 @@ test-project/
 weather-app/
 .github/
 workspace-tools/
+hack/
+network/
+sky/
+vac/

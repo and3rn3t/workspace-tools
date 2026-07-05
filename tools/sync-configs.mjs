@@ -47,6 +47,38 @@ const MANIFEST = [
   { dest: 'renovate.json',           src: join(TPL, 'renovate.json'),             types: ['node'],   drift: false },
   { dest: 'renovate.json',           src: join(PYTPL, 'renovate.json'),           types: ['python'], drift: false },
   { dest: '.pre-commit-config.yaml', src: join(PYTPL, '.pre-commit-config.yaml'), types: ['python'], drift: true  },
+  // Community health files. Sourced from ai-template-repo, which already
+  // carries these; they just hadn't been wired into the manifest yet.
+  { dest: 'CODE_OF_CONDUCT.md',      src: join(TPL, 'CODE_OF_CONDUCT.md'),        types: ['all'],    drift: true  },
+  { dest: 'CONTRIBUTING.md',         src: join(TPL, 'CONTRIBUTING.md'),           types: ['all'],    drift: false },
+  { dest: '.github/ISSUE_TEMPLATE/bug_report.yml',     src: join(TPL, '.github/ISSUE_TEMPLATE/bug_report.yml'),     types: ['all'], drift: true },
+  { dest: '.github/ISSUE_TEMPLATE/feature_request.yml', src: join(TPL, '.github/ISSUE_TEMPLATE/feature_request.yml'), types: ['all'], drift: true },
+  { dest: '.github/ISSUE_TEMPLATE/config.yml',          src: join(TPL, '.github/ISSUE_TEMPLATE/config.yml'),          types: ['all'], drift: true },
+  // PR template. Note: some repos already carry PULL_REQUEST_TEMPLATE.md
+  // (uppercase) — GitHub recognizes either casing, and this entry only fires
+  // where neither casing exists yet.
+  { dest: '.github/pull_request_template.md', src: join(TPL, '.github/pull_request_template.md'), types: ['all'], drift: false },
+  // Label taxonomy + auto-labeling. label-sync uses delete-other-labels:false,
+  // so it only adds/updates — never removes a repo's existing custom labels.
+  { dest: '.github/labels.yml',                 src: join(TPL, '.github/labels.yml'),                 types: ['all'], drift: true  },
+  { dest: '.github/workflows/label-sync.yml',   src: join(TPL, '.github/workflows/label-sync.yml'),   types: ['all'], drift: false },
+  { dest: '.github/labeler.yml',                src: join(TPL, '.github/labeler.yml'),                types: ['all'], drift: true  },
+  { dest: '.github/workflows/labeler.yml',      src: join(TPL, '.github/workflows/labeler.yml'),      types: ['all'], drift: false },
+  // Release Drafter — drafts (never publishes) release notes from merged PR labels.
+  { dest: '.github/release-drafter.yml',            src: join(TPL, '.github/release-drafter.yml'),            types: ['all'], drift: true  },
+  { dest: '.github/workflows/release-drafter.yml',  src: join(TPL, '.github/workflows/release-drafter.yml'),  types: ['all'], drift: false },
+  // Lighthouse stub — sourced from ai-template-repo's DISABLED-by-default
+  // variant (workflow_dispatch only, no-op job), not the org workflow-templates
+  // version (which actively schedules a run against a placeholder URL).
+  { dest: '.github/workflows/lighthouse.yml', src: join(TPL, '.github/workflows/lighthouse.yml'), types: ['all'], drift: false },
+  // Dependency Review — calls and3rn3t/.github's reusable workflow; harmless
+  // no-op on repos with nothing to review.
+  { dest: '.github/workflows/dependency-review.yml', src: join(TPL, '.github/workflows/dependency-review.yml'), types: ['all'], drift: false },
+  // CodeQL — language-specific, so node and python get different source files.
+  // Not wired up for xcode/other types yet (Swift/C++ CodeQL needs a working
+  // build step first; add manually if you want it there).
+  { dest: '.github/workflows/codeql.yml', src: join(TPL, '.github/workflows/codeql.yml'), types: ['node'],   drift: true },
+  { dest: '.github/workflows/codeql.yml', src: join(PYTPL, 'codeql.yml'),                 types: ['python'], drift: true },
   // Language-agnostic: every repo (including Xcode-only) should carry the PR-time
   // consistency guard so drift on the files above gets caught automatically.
   { dest: '.github/workflows/consistency.yml', src: join(GHTPL, 'consistency.yml'), types: ['all'], drift: true },
