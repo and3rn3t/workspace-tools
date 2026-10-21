@@ -1,0 +1,640 @@
+{
+  "$comment": "Source of truth for workspace settings. Edit, then `make plan` to see what would change and `make apply` to converge. See tools/README.md.",
+  "owner": "and3rn3t",
+  "defaults": {
+    "protection": "standard",
+    "renovate": "tier"
+  },
+  "policies": {
+    "protection": {
+      "standard": {
+        "required_status_checks": null,
+        "enforce_admins": false,
+        "required_pull_request_reviews": {
+          "required_approving_review_count": 0,
+          "dismiss_stale_reviews": false,
+          "require_code_owner_reviews": false
+        },
+        "restrictions": null,
+        "allow_force_pushes": false,
+        "allow_deletions": false,
+        "required_conversation_resolution": true
+      }
+    },
+    "renovate": {
+      "active": "github>and3rn3t/.github//renovate-config",
+      "dormant": "github>and3rn3t/.github//renovate-config-dormant"
+    }
+  },
+  "repos": {
+    ".github": {
+      "group": "meta",
+      "summary": "Shared reusable workflows, workflow templates, default SECURITY.md for all and3rn3t repos (must be public on GitHub)",
+      "featured": false,
+      "github": {
+        "description": "",
+        "homepage": "",
+        "topics": []
+      },
+      "protection": "standard"
+    },
+    "amiibo": {
+      "group": "python",
+      "summary": "amiibo-flipper — fetch amiibo metadata, export Flipper-friendly files",
+      "featured": false,
+      "github": {
+        "description": "Import amiibo metadata and export Flipper-friendly files.",
+        "homepage": "",
+        "topics": [
+          "amiibo",
+          "flipper-zero",
+          "python"
+        ]
+      },
+      "protection": "standard"
+    },
+    "and3rn3t": {
+      "group": "web",
+      "summary": "Personal portfolio site (worker: `and3rn3t-portfolio`) — pnpm",
+      "featured": false,
+      "github": {
+        "description": "Config files for my GitHub profile.",
+        "homepage": "https://github.com/and3rn3t",
+        "topics": [
+          "config",
+          "github-config"
+        ]
+      },
+      "protection": "standard"
+    },
+    "apple-music-dj": {
+      "group": "python",
+      "summary": "Apple Music curation engine — packaged as a skill (`SKILL.md`)",
+      "featured": true,
+      "github": {
+        "description": "AI Apple Music curator: playlists from your real listening history. Agent Skill for Claude Code and OpenClaw. Try the demo with no account.",
+        "homepage": "https://clawhub.ai/and3rn3t/skills/apple-music-dj",
+        "topics": [
+          "agent-skill",
+          "agent-skills",
+          "ai-dj",
+          "apple-music",
+          "claude-code",
+          "claude-skill",
+          "clawhub",
+          "cli",
+          "music",
+          "music-discovery",
+          "music-recommendation",
+          "musickit",
+          "openclaw",
+          "playlist",
+          "playlist-generator",
+          "python",
+          "spotify-to-apple-music"
+        ]
+      },
+      "protection": "standard"
+    },
+    "apple-photos-cleaner": {
+      "group": "python",
+      "summary": "Photos library audit/cleanup via its SQLite DB — packaged as a skill (`SKILL.md`)",
+      "featured": true,
+      "github": {
+        "description": "OpenClaw skill for Apple Photos library cleanup, analysis, duplicate detection, and timeline recaps. Pure Python, no API tokens needed.",
+        "homepage": "",
+        "topics": [
+          "apple-photos",
+          "claude-skill",
+          "python"
+        ]
+      },
+      "protection": "standard"
+    },
+    "apple-shortcuts-doctor": {
+      "group": "apple",
+      "summary": "",
+      "featured": true,
+      "github": {
+        "description": "",
+        "homepage": "",
+        "topics": []
+      },
+      "protection": "standard"
+    },
+    "birds": {
+      "group": "python",
+      "summary": "fugleramme — e-ink bird frame for Raspberry Pi, real-time bird detection by audio (pyproject.toml)",
+      "featured": false,
+      "github": {
+        "description": "E-ink bird frame for Raspberry Pi - real-time bird detection by audio, fully local AI, rendered as real, hand-cut 1800s bird illustrations.",
+        "homepage": "http://arnegiacomo.dev/fugleramme/",
+        "topics": []
+      },
+      "protection": "standard"
+    },
+    "catastrophe": {
+      "group": "game",
+      "summary": "\"CATastrophe: A Mischief Simulator\" — 3D open-world cat game, Unreal Engine 5",
+      "featured": false,
+      "github": {
+        "description": "CATastrophe: A Mischief Simulator (Experimenting with Unreal Engine)",
+        "homepage": "",
+        "topics": [
+          "cpp",
+          "gamedev",
+          "unreal-engine"
+        ]
+      },
+      "protection": "standard"
+    },
+    "cats": {
+      "group": "web",
+      "summary": "\"Cat Collector\" — educational cat-breed collection game for kids — npm",
+      "featured": false,
+      "github": {
+        "description": "Cat Game",
+        "homepage": "",
+        "topics": [
+          "inactive"
+        ]
+      },
+      "protection": "none",
+      "renovate": "disabled"
+    },
+    "dbt": {
+      "group": "python",
+      "summary": "Data science/analytics workspace — Python analysis + dbt transforms + notebooks",
+      "featured": false,
+      "github": {
+        "description": "Data science/analytics workspace — Python analysis, dbt transforms, and notebooks.",
+        "homepage": "",
+        "topics": [
+          "inactive"
+        ]
+      },
+      "protection": "none"
+    },
+    "docker-playground": {
+      "group": "meta",
+      "summary": "docker-playground experiments",
+      "featured": false,
+      "github": {
+        "description": "Learning more about docker with the Docker API and a sandbox env",
+        "homepage": "",
+        "topics": [
+          "docker",
+          "react",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard",
+      "renovate": "disabled"
+    },
+    "eslint-config": {
+      "group": "meta",
+      "summary": "Shared ESLint 9 flat config package for and3rn3t React + TypeScript repos — private, npm",
+      "featured": true,
+      "github": {
+        "description": "Shared ESLint 9 flat config for and3rn3t React + TypeScript repos (ESLint 10 pending upstream plugin support).",
+        "homepage": "",
+        "topics": [
+          "eslint",
+          "react",
+          "shared-config",
+          "typescript"
+        ]
+      },
+      "protection": "standard"
+    },
+    "family": {
+      "group": "web",
+      "summary": "Family Organizer — chore/schedule kiosk app for Raspberry Pi 4B — npm",
+      "featured": false,
+      "github": {
+        "description": "Family Organizer — chore/schedule kiosk app for Raspberry Pi 4B.",
+        "homepage": "",
+        "topics": [
+          "kiosk",
+          "raspberry-pi",
+          "react",
+          "tailwindcss",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard"
+    },
+    "fastlane": {
+      "group": "web",
+      "summary": "Fast Lane — single-player life-sim board game (React + TS + Vite) — pnpm",
+      "featured": true,
+      "github": {
+        "description": "A recreation of the 90s SIERRA game \"Jones in the Fast Lane\" - modernized.",
+        "homepage": "",
+        "topics": []
+      },
+      "protection": "standard"
+    },
+    "flipper": {
+      "group": "web",
+      "summary": "Flipper Zero Lab — interactive experimentation dashboard, no hardware required",
+      "featured": true,
+      "github": {
+        "description": "Flipper Zero Lab — interactive experimentation dashboard, no hardware required.",
+        "homepage": "",
+        "topics": [
+          "cloudflare-workers",
+          "react",
+          "tailwindcss",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard",
+      "renovate": "disabled"
+    },
+    "guess": {
+      "group": "web",
+      "summary": "\"Andernator\" guessing game — pnpm monorepo (`apps/`)",
+      "featured": true,
+      "github": {
+        "description": "A guessing game like \"Akinator\", but with more visibility to the user how it works.",
+        "homepage": "https://andernator.com",
+        "topics": [
+          "cloudflare-workers",
+          "game",
+          "react",
+          "tailwindcss",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard"
+    },
+    "hack": {
+      "group": "game",
+      "summary": "\"The Hack: Ghost Protocol\" — horror-themed terminal hacking sim / CTF, Rust, deploys as a Cloudflare Worker",
+      "featured": false,
+      "github": {
+        "description": "A hacking simulator",
+        "homepage": "",
+        "topics": [
+          "game",
+          "hacking-simulator",
+          "rust",
+          "wasm"
+        ]
+      },
+      "protection": "standard",
+      "renovate": "dependabot"
+    },
+    "health": {
+      "group": "web",
+      "summary": "VitalSense — Apple Health insights, fall risk detection, caregiver dashboards; multiple workers incl. websocket — pnpm",
+      "featured": true,
+      "github": {
+        "description": "Tinkering with Apple HealthKit and the LiDAR sensors in Apple iPhones.",
+        "homepage": "https://health.andernet.dev",
+        "topics": [
+          "ai",
+          "gait-analysis",
+          "health",
+          "healthkit",
+          "lidar",
+          "ml",
+          "walking",
+          "wellness"
+        ]
+      },
+      "protection": "standard"
+    },
+    "homehub": {
+      "group": "web",
+      "summary": "Smart home dashboard, React 19, live camera streaming",
+      "featured": true,
+      "github": {
+        "description": "My attempt to build an inclusive homehub / automation project.",
+        "homepage": "https://homehub.andernet.dev",
+        "topics": [
+          "cloudflare-workers",
+          "react",
+          "smart-home",
+          "tailwindcss",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard"
+    },
+    "homekit-automator": {
+      "group": "apple",
+      "summary": "HomeKit automation tool; nested Xcode project, Homebrew Formula",
+      "featured": false,
+      "github": {
+        "description": "HomeKit automation tool; nested Xcode project with a Homebrew Formula.",
+        "homepage": "",
+        "topics": [
+          "homebrew",
+          "homekit",
+          "swift",
+          "xcode"
+        ]
+      },
+      "protection": "standard"
+    },
+    "huggingface": {
+      "group": "web",
+      "summary": "HuggingFace Playground — browse datasets/models, experiment with AI APIs",
+      "featured": true,
+      "github": {
+        "description": "Overview and sandbox for Hugging Face AI API",
+        "homepage": "",
+        "topics": [
+          "ai",
+          "cloudflare-workers",
+          "huggingface",
+          "react",
+          "tailwindcss",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard",
+      "renovate": "disabled"
+    },
+    "jonah": {
+      "group": "web",
+      "summary": "Personal portfolio for Jonah (GitHub Spark template)",
+      "featured": true,
+      "github": {
+        "description": "Personal portfolio for Jonah (GitHub Spark template).",
+        "homepage": "",
+        "topics": [
+          "cloudflare-workers",
+          "portfolio",
+          "react",
+          "tailwindcss",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard"
+    },
+    "minecraft": {
+      "group": "python",
+      "summary": "Minecraft server setup/control for Raspberry Pi 5, Docker-based",
+      "featured": true,
+      "github": {
+        "description": "Self-hosted Minecraft server manager for Raspberry Pi 5 (ARM64) — Docker deployment, automated backups, plugin/mod management, multi-world support, RCON, a Flask REST API, and a React admin panel.",
+        "homepage": "",
+        "topics": [
+          "arm64",
+          "docker",
+          "docker-compose",
+          "flask",
+          "home-server",
+          "minecraft",
+          "minecraft-server",
+          "python",
+          "raspberry-pi",
+          "rcon",
+          "react",
+          "self-hosted"
+        ]
+      },
+      "protection": "standard"
+    },
+    "net-traffic": {
+      "group": "web",
+      "summary": "NetInsight — network traffic analysis dashboard — npm",
+      "featured": true,
+      "github": {
+        "description": "Unifying network information on a RPi 5",
+        "homepage": "",
+        "topics": [
+          "cloudflare-workers",
+          "networking",
+          "raspberry-pi",
+          "react",
+          "tailwindcss",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard"
+    },
+    "network": {
+      "group": "python",
+      "summary": "NetworkMonitor — UniFi API integration for network monitoring; Python backend + `workers/` (Cloudflare Workers)",
+      "featured": false,
+      "github": {
+        "description": "Testing UniFi API",
+        "homepage": "",
+        "topics": [
+          "cloudflare-workers",
+          "networking",
+          "python",
+          "unifi"
+        ]
+      },
+      "protection": "standard"
+    },
+    "posture": {
+      "group": "web",
+      "summary": "Spark template starter (early stage)",
+      "archived": true,
+      "featured": false,
+      "github": {
+        "description": "Posture tracking app — Spark template starter (early stage).",
+        "homepage": "",
+        "topics": [
+          "health",
+          "posture-tracking",
+          "react",
+          "tailwindcss",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard"
+    },
+    "Printer": {
+      "group": "apple",
+      "summary": "iOS app for Anycubic 3D printers (Printer.xcodeproj)",
+      "featured": false,
+      "github": {
+        "description": "",
+        "homepage": "",
+        "topics": [
+          "inactive"
+        ]
+      },
+      "protection": "none"
+    },
+    "r-data": {
+      "group": "meta",
+      "summary": "R data-analysis workspace with example scripts",
+      "featured": false,
+      "github": {
+        "description": "",
+        "homepage": "",
+        "topics": [
+          "inactive"
+        ]
+      },
+      "protection": "none"
+    },
+    "reddit": {
+      "group": "meta",
+      "summary": "daily-briefing experiment (Reddit + news digest skill)",
+      "archived": true,
+      "featured": false,
+      "github": {
+        "description": "Daily-briefing experiment — a Claude skill combining trending Reddit posts and news headlines into a scannable daily digest.",
+        "homepage": "",
+        "topics": [
+          "claude-skill",
+          "daily-briefing",
+          "news",
+          "reddit"
+        ]
+      },
+      "protection": "standard"
+    },
+    "remote": {
+      "group": "apple",
+      "summary": "Denon AVR remote control app, iOS 26 Liquid Glass design",
+      "featured": false,
+      "github": {
+        "description": "Building a Denon AVR remote to tinker with Denon API",
+        "homepage": "",
+        "topics": [
+          "denon",
+          "home-automation",
+          "ios",
+          "swift",
+          "xcode"
+        ]
+      },
+      "protection": "standard"
+    },
+    "silas": {
+      "group": "web",
+      "summary": "Personal website for Silas Anderson, with an embedded RPG game — npm",
+      "featured": false,
+      "github": {
+        "description": "Personal webpage for Silas",
+        "homepage": "https://silas-anderson.pages.dev",
+        "topics": [
+          "cloudflare-pages",
+          "game",
+          "javascript",
+          "playwright"
+        ]
+      },
+      "protection": "standard",
+      "renovate": "disabled"
+    },
+    "sky": {
+      "group": "web",
+      "summary": "Celestial-event discovery platform — location-aware night-sky alerts (GitHub Spark template, early stage) — npm",
+      "featured": false,
+      "github": {
+        "description": "A personalized celestial-event discovery platform — location-aware night-sky alerts (Spark template, early stage).",
+        "homepage": "",
+        "topics": [
+          "astronomy",
+          "react",
+          "spark-template",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard"
+    },
+    "telescope": {
+      "group": "web",
+      "summary": "JWST Deep Sky Explorer — 3D telescope visualization using NASA APIs (GitHub Spark template) — npm",
+      "featured": false,
+      "github": {
+        "description": "A general overview of the JWST for fun",
+        "homepage": "",
+        "topics": [
+          "cloudflare-workers",
+          "jwst",
+          "nasa",
+          "react",
+          "space",
+          "tailwindcss",
+          "typescript",
+          "vite"
+        ]
+      },
+      "protection": "standard",
+      "renovate": "disabled"
+    },
+    "test-project": {
+      "group": "meta",
+      "summary": "Template test bed (mirrors ai-template-repo structure)",
+      "featured": false,
+      "github": {
+        "description": "Template test bed that mirrors the ai-template-repo structure.",
+        "homepage": "",
+        "topics": [
+          "template",
+          "testing"
+        ]
+      },
+      "protection": "standard"
+    },
+    "tools": {
+      "group": "meta",
+      "summary": "Meta-workspace tooling (tracked in this root repo, `workspace-tools`): `make doctor/status/sync/drift/dashboard` — consistency + orchestration across all repos; see `tools/README.md`",
+      "featured": false,
+      "github": {
+        "description": "",
+        "homepage": "",
+        "topics": []
+      },
+      "protection": "standard"
+    },
+    "vac": {
+      "group": "python",
+      "summary": "Connecting to a robotic vacuum without cloud services — mixed Python backend + npm mobile-app",
+      "featured": false,
+      "github": {
+        "description": "Playing with connecting to robotic vacuum without cloud services",
+        "homepage": "",
+        "topics": [
+          "home-automation",
+          "iot",
+          "python",
+          "robotics"
+        ]
+      },
+      "protection": "standard",
+      "renovate": "disabled"
+    },
+    "weather-app": {
+      "group": "apple",
+      "summary": "Weather app for iOS & Android, fastlane for release",
+      "featured": false,
+      "github": {
+        "description": "iOS26 Weather App",
+        "homepage": "",
+        "topics": [
+          "android",
+          "fastlane",
+          "ios",
+          "swift",
+          "weather",
+          "xcode"
+        ]
+      },
+      "protection": "standard",
+      "renovate": "dependabot"
+    }
+  }
+}

@@ -26,7 +26,10 @@ export const TIER_OVERRIDES = {};
 export function projectCommits(repo, days = ACTIVE_DAYS) {
   const repoPath = join(ROOT, repo);
   const log = (ref) => spawnSync('git', ['-C', repoPath, 'log', ref, `--since=${days}.days`, '--format=%x00%an <%ae>', '--name-only'], { encoding: 'utf8' });
-  let r = log('@{u}');
+  // The default branch on origin, not the checked-out branch's upstream: a repo
+  // left on a PR branch must not count unmerged PR work as activity.
+  let r = log('origin/HEAD');
+  if (r.status !== 0) r = log('@{u}');
   if (r.status !== 0) r = log('HEAD');
   if (r.status !== 0) return 0;
   return r.stdout.split('\0').slice(1).filter(entry => {

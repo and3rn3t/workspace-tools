@@ -40,10 +40,14 @@ const C = { reset: '\x1b[0m', dim: '\x1b[2m', green: '\x1b[32m', yellow: '\x1b[3
 const STRAY_RE = / \d+$/;
 const LOCK_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
+// Every sibling repo plus the two dot-named ones that other tools skip:
+// `.github` (the org repo — it carried July-7 locks that blocked moving the v1
+// tag) and `.` (this workspace-tools root repo itself).
 function repos() {
-  return readdirSync(ROOT, { withFileTypes: true })
-    .filter(e => e.isDirectory() && !SKIP.has(e.name) && !e.name.startsWith('.'))
-    .map(e => e.name)
+  const siblings = readdirSync(ROOT, { withFileTypes: true })
+    .filter(e => e.isDirectory() && !SKIP.has(e.name) && (!e.name.startsWith('.') || e.name === '.github'))
+    .map(e => e.name);
+  return ['.', ...siblings]
     .filter(name => !onlyRepo || name === onlyRepo)
     .sort();
 }
