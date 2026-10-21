@@ -53,7 +53,7 @@ export function validateWorkspace(ws = loadWorkspace()) {
     if (r.tier && !TIERS.has(r.tier)) problems.push(`${name}: tier must be auto, active or dormant`);
     if (r.renovate && !RENOVATE.has(r.renovate)) problems.push(`${name}: renovate must be tier, disabled or dependabot`);
     if (r.protection && !ws.policies?.protection?.[r.protection] && r.protection !== 'none') problems.push(`${name}: unknown protection policy "${r.protection}"`);
-    if (!local.has(name) && !['.github', 'tools'].includes(name)) problems.push(`${name}: declared but no local folder`);
+    if (!local.has(name) && !['.github', 'tools', 'ai-template-repo'].includes(name)) problems.push(`${name}: declared but no local folder`);
   }
   for (const name of local) if (!ws.repos?.[name]) problems.push(`${name}: local repo not declared in workspace.json (add an entry)`);
   return problems;

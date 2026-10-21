@@ -41,8 +41,8 @@ const INDEX_END = '## Notes for Claude';
 export function renderIndex(ws = loadWorkspace()) {
   return Object.entries(GROUPS).map(([key, heading]) => {
     const rows = Object.entries(ws.repos)
-      .filter(([, r]) => r.group === key && !r.archived)
-      .map(([name, r]) => `| \`${name}\`${existsSync(join(ROOT, name, 'CLAUDE.md')) ? ' ✓' : ''} | ${r.summary} |`);
+      .filter(([, r]) => r.group === key)
+      .map(([name, r]) => `| \`${name}\`${existsSync(join(ROOT, name, 'CLAUDE.md')) ? ' ✓' : ''} | ${r.summary}${r.archived ? ' _(archived)_' : ''} |`);
     return `## ${heading}\n\n| Repo | What it is |\n|---|---|\n${rows.join('\n')}\n`;
   }).join('\n') + '\n';
 }

@@ -12,6 +12,7 @@
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { ROOT, MANIFEST } from './manifest.mjs';
+import { loadWorkspace } from './workspace.mjs';
 
 export const ACTIVE_DAYS = 90;
 const BOT = /renovate|dependabot|github-actions|\[bot\]/i;
@@ -19,9 +20,12 @@ const MANAGED = new Set(MANIFEST.map(m => m.dest));
 const HOUSEKEEPING = new Set(['.consistency-ignore', 'AGENTS.md', 'CLAUDE.md', '.github/dependabot.yml']);
 const isHousekeeping = f => MANAGED.has(f) || HOUSEKEEPING.has(f);
 
-// Force a tier regardless of commit history, e.g. a seasonal project that
-// should stay polished: { 'weather-app': 'active' }.
-export const TIER_OVERRIDES = {};
+// Force a tier regardless of commit history with `"tier": "active"` (or
+// "dormant") on the repo's workspace.json entry; "auto" (default) uses commits.
+const tierOverride = repo => {
+  const tier = loadWorkspace()?.repos?.[repo]?.tier;
+  return tier && tier !== 'auto' ? tier : null;
+};
 
 export function projectCommits(repo, days = ACTIVE_DAYS) {
   const repoPath = join(ROOT, repo);
@@ -39,6 +43,7 @@ export function projectCommits(repo, days = ACTIVE_DAYS) {
 }
 
 export function tierFor(repo) {
-  if (TIER_OVERRIDES[repo]) return TIER_OVERRIDES[repo];
+  const forced = tierOverride(repo);
+  if (forced) return forced;
   return projectCommits(repo) > 0 ? 'active' : 'dormant';
 }

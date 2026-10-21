@@ -38,6 +38,17 @@
       },
       "protection": "standard"
     },
+    "ai-template-repo": {
+      "group": "meta",
+      "summary": "Canonical AI-assisted dev template (CLAUDE.md, AGENTS.md, Copilot/Cursor configs) — baseline for new repos",
+      "featured": false,
+      "github": {
+        "description": "",
+        "homepage": "",
+        "topics": []
+      },
+      "protection": "standard"
+    },
     "amiibo": {
       "group": "python",
       "summary": "amiibo-flipper — fetch amiibo metadata, export Flipper-friendly files",
@@ -112,8 +123,8 @@
       "protection": "standard"
     },
     "apple-shortcuts-doctor": {
-      "group": "apple",
-      "summary": "",
+      "group": "meta",
+      "summary": "Shortcuts Doctor — static inspection of Apple Shortcuts exports (what it does, data exposure, breakage) without running it — TS CLI, npm",
       "featured": false,
       "github": {
         "description": "",

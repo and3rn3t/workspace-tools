@@ -86,6 +86,30 @@ propagate to repos that are missing them.
 repo's real build/test steps differ too much to template safely; `make sync-apply`
 will never create or touch it in an existing repo). These stay hand-owned per repo.
 
+## `workspace.json` — the source of truth
+
+`workspace.json` (root of this repo) declares how every repo *should* be set up:
+global `defaults`, named `policies` (the standard branch-protection rule set, the
+active/dormant Renovate presets) and one entry per repo:
+
+| Key | Meaning |
+|---|---|
+| `group` | CLAUDE.md index section: `web`, `python`, `apple`, `game`, `meta` |
+| `summary` | the index's "What it is" text |
+| `tier` | `auto` (from commits, default), or force `active` / `dormant` |
+| `featured` | adds the `featured` topic — the profile README's featured block selects on it |
+| `github` | `description`, `homepage`, `topics` |
+| `protection` | a policy name from `policies.protection`, or `none` |
+| `renovate` | `tier` (preset follows activity tier, default), `disabled`, or `dependabot` |
+| `archived` | whether the GitHub repo should be archived |
+
+Workflow: edit `workspace.json` → `make plan` (refreshes GitHub data, lists every
+difference) → `make apply` (asks per category; `--yes=github,index` for scripted
+runs). GitHub-side changes go through `gh`; `renovate.json` and the root
+`CLAUDE.md` project index are rewritten locally for you to commit. The index is
+generated — edit summaries in `workspace.json`, not in `CLAUDE.md`.
+New repo? `make workspace-init` adds an entry seeded from its current state.
+
 ## Activity tiers & presentation score
 
 Not every repo needs to look polished — only the ones being worked on.
@@ -93,7 +117,7 @@ Not every repo needs to look polished — only the ones being worked on.
 commit in the last 90 days (on `@{u}`) that touches real project files. Bot
 commits and workspace-wide sweeps that only touch manifest-managed files (e.g. a
 release-drafter fix rolled out everywhere) don't count. Pin a repo either way
-with `TIER_OVERRIDES` in that file.
+with `"tier"` on its `workspace.json` entry.
 
 Active repos get a **Presentation** score (`tools/lib/presentation.mjs`) for
 what a visitor to the GitHub page sees:

@@ -21,7 +21,7 @@ NODE := node
 REPO ?=
 REPOFLAG := $(if $(REPO),--repo=$(REPO),)
 
-.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard meta versions new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
+.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard plan apply workspace-init meta versions new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
 
 help:
 	@echo "Meta-workspace targets:"
@@ -45,6 +45,9 @@ help:
 	@echo "  make renovate-tier         dry-run: point each renovate.json at the active/dormant preset (-apply to write)"
 	@echo "  make renovate-status       aggregate each repo's Dependency Dashboard pending-update count"
 	@echo "  make versions              stack matrix: key package majors per repo, highlighting ones behind the newest in use"
+	@echo "  make plan                  refresh GitHub data, then diff workspace.json (desired) against reality"
+	@echo "  make apply                 converge to workspace.json, asking per category (github/protection/renovate/archive/index)"
+	@echo "  make workspace-init        add workspace.json entries for undeclared repos, seeded from current state"
 	@echo "  make meta                  refresh .github-meta.json (description, topics, protection, CI, releases) for presentation scoring"
 	@echo "  make report                full morning report (dashboard + git health + secrets + renovate + live CI)"
 	@echo "  make report-quick          same, local-only (no GitHub API calls)"
@@ -78,6 +81,15 @@ dashboard:
 
 versions:
 	@$(NODE) tools/versions.mjs $(REPOFLAG)
+
+plan:
+	@$(NODE) tools/github-meta.mjs >/dev/null && $(NODE) tools/plan.mjs $(REPOFLAG)
+
+apply:
+	@$(NODE) tools/apply.mjs $(REPOFLAG)
+
+workspace-init:
+	@$(NODE) tools/workspace-init.mjs --apply
 
 meta:
 	@$(NODE) tools/github-meta.mjs $(REPOFLAG)
