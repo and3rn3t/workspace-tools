@@ -23,6 +23,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { evaluate, listRepos, typeLabel, SNAPSHOT } from './lib/manifest.mjs';
+import { tierFor } from './lib/activity.mjs';
+import { evaluatePresentation, loadMeta } from './lib/presentation.mjs';
 
 const args = process.argv.slice(2);
 const APPLY = args.includes('--apply');
@@ -36,10 +38,21 @@ const C = { reset: '\x1b[0m', dim: '\x1b[2m', green: '\x1b[32m', yellow: '\x1b[3
 
 const results = listRepos(onlyRepo).map(evaluate);
 
-const snapshotOf = (rs) => ({
-  generatedAt: new Date().toISOString(),
-  repos: Object.fromEntries(rs.map(r => [r.repo, { types: [...r.types], missing: r.missing, drift: r.drift, blessed: r.blessed }])),
-});
+// Snapshots also record each repo's tier and, for active repos, which
+// presentation checks fail (and which were checkable — remote checks need
+// the .github-meta.json cache), so `--since-last` can report regressions.
+const snapshotOf = (rs) => {
+  const meta = (JSON_OUT || SINCE) ? loadMeta() : null;
+  return {
+    generatedAt: new Date().toISOString(),
+    repos: Object.fromEntries(rs.map(r => {
+      const tier = tierFor(r.repo);
+      const entry = { types: [...r.types], tier, missing: r.missing, drift: r.drift, blessed: r.blessed };
+      if (tier === 'active') { const p = evaluatePresentation(r.repo, meta); entry.presentation = { score: p.score, fail: p.fail, checked: p.checked }; }
+      return [r.repo, entry];
+    })),
+  };
+};
 const loadSnapshot = () => { try { return JSON.parse(readFileSync(SNAPSHOT, 'utf8')); } catch { return null; } };
 const totals = (rs) => rs.reduce((a, r) => {
   for (const i of r.items) a[i.status] = (a[i.status] || 0) + 1;
@@ -72,6 +85,15 @@ if (SINCE) {
       newDrift.forEach(f => lines.push(`  ${C.yellow}+ drift${C.reset}   ${name}: ${f}`));
       fixedMiss.forEach(f => lines.push(`  ${C.green}- missing${C.reset} ${name}: ${f} ${C.dim}(now present)${C.reset}`));
       fixedDrift.forEach(f => lines.push(`  ${C.green}- drift${C.reset}   ${name}: ${f} ${C.dim}(resolved or blessed)${C.reset}`));
+      if (old.tier && old.tier !== cur.tier) lines.push(`  ${C.cyan}TIER${C.reset}      ${name}: ${old.tier} → ${cur.tier}`);
+      // Presentation: only compare checks that were evaluable in both runs, so
+      // a missing/refreshed meta cache doesn't show up as a wave of changes.
+      if (old.presentation && cur.presentation) {
+        const both = k => old.presentation.checked.includes(k) && cur.presentation.checked.includes(k);
+        const [newFail, fixedFail] = diff(old.presentation.fail, cur.presentation.fail);
+        newFail.filter(both).forEach(k => lines.push(`  ${C.red}+ present${C.reset} ${name}: ${k}`));
+        fixedFail.filter(both).forEach(k => lines.push(`  ${C.green}- present${C.reset} ${name}: ${k} ${C.dim}(now passing)${C.reset}`));
+      }
     }
     if (!onlyRepo) for (const name of Object.keys(prev.repos)) if (!next.repos[name]) lines.push(`  ${C.dim}GONE      ${name} (no longer in workspace)${C.reset}`);
     const count = (s, k) => Object.values(s.repos).reduce((a, r) => a + r[k].length, 0);

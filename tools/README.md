@@ -13,7 +13,8 @@ from the folder root via the top-level `Makefile`.
 | `make sync-apply` | Create those missing files (never overwrites existing ones) |
 | `make drift` | Report files that **exist but differ** from `ai-template-repo` — for manual review |
 | `make changes` | Week-over-week diff against `.consistency-snapshot.json`: **new repos**, newly missing files, new drift, and what got fixed — then re-snapshots. Add `--json` to `sync-configs.mjs` for machine-readable state |
-| `make dashboard` | Regenerate `dashboard.html` — a consistency scorecard across all repos. Scored from the same manifest as `make sync`/`make drift` (`tools/lib/manifest.mjs`), so its drift count always matches the drift report |
+| `make dashboard` | Regenerate `dashboard.html` — a consistency scorecard across all repos, split into **Active** / **Dormant** tiers, with a **Presentation** score for active repos. Scored from the same manifest as `make sync`/`make drift` (`tools/lib/manifest.mjs`), so its drift count always matches the drift report |
+| `make meta` | Refresh `.github-meta.json` (gitignored) from the GitHub API: description, homepage, topics, branch protection, latest run per active workflow on the default branch, latest release. Feeds the dashboard's Presentation score and `make report`'s CI section |
 | `make new-repo NAME=x TYPE=node\|python` | Scaffold a new sibling repo from the template so it starts 100% consistent |
 | `make lint` / `build` / `test` / `typecheck` / `format` / `audit` | Fan the command out across all repos, auto-detecting the package manager |
 | `make outdated` | Per-repo snapshot of outdated npm/pnpm deps, highlighting major bumps (needs installed deps; Python not included) |
@@ -22,7 +23,7 @@ from the folder root via the top-level `Makefile`.
 | `make health` | Lint + typecheck + build (+ test) per repo, **one** pass/fail per repo instead of one per sub-command — a lightweight CI surrogate for the polyrepo setup |
 | `make git-doctor` / `git-doctor-fix` | Find (and optionally delete) stray duplicate files inside `.git/` — `index 2`, `HEAD 2`, broken refs, etc. Not cosmetic: these have twice broken `git fetch`/`status` outright this session |
 | `make renovate-status` | Aggregate every repo's Renovate "Dependency Dashboard" issue into one sorted view of pending major-bump approvals |
-| `make report` / `report-quick` | One consolidated "morning report": dashboard + git health + local git status + secrets audit + Renovate backlog + live CI status. `-quick` skips anything needing the GitHub API |
+| `make report` / `report-quick` | One consolidated "morning report": refreshes `make meta`, then dashboard + git health + local git status + secrets audit + Renovate backlog + CI status (every failing workflow on each default branch). `-quick` skips anything needing the GitHub API |
 
 ## Automation
 
@@ -68,6 +69,7 @@ propagate to repos that are missing them.
 | `.github/workflows/gitleaks.yml` | all (incl. Xcode) | drift-tracked — scans every push/PR for committed secrets via `reusable-gitleaks.yml`. **Note**: `gitleaks-action@v2` is free for public repos but needs a `GITLEAKS_LICENSE` secret for private ones — confirm each repo's visibility before assuming this runs clean. |
 | `.github/workflows/stale.yml` | all (incl. Xcode) | not drift-tracked — hand-tune freely once created (see `weather-app`'s richer version) |
 | `.github/workflows/actionlint.yml` | all (incl. Xcode) | drift-tracked — validates every other workflow file against the real Actions schema |
+| `.github/CODEOWNERS` | all | from `tools/templates/CODEOWNERS` (`* @and3rn3t`); not drift-tracked — richer path rules (homehub, catastrophe) are fine |
 | `.github/pull_request_template.md` | all | skips repos already carrying either casing (`PULL_REQUEST_TEMPLATE.md` also recognized by GitHub) |
 | `.github/labels.yml`, `.github/workflows/label-sync.yml` | all | label taxonomy (type/status/priority/size); sync uses `delete-other-labels: false`, only adds/updates |
 | `.github/labeler.yml`, `.github/workflows/labeler.yml` | all | auto-labels PRs by changed file path |
@@ -80,6 +82,34 @@ propagate to repos that are missing them.
 `tsconfig`, Prettier, and the main CI workflow (`ci.yml`/`quality.yml`/etc. — every
 repo's real build/test steps differ too much to template safely; `make sync-apply`
 will never create or touch it in an existing repo). These stay hand-owned per repo.
+
+## Activity tiers & presentation score
+
+Not every repo needs to look polished — only the ones being worked on.
+`tools/lib/activity.mjs` marks a repo **active** when it has at least one human
+commit in the last 90 days (on `@{u}`) that touches real project files. Bot
+commits and workspace-wide sweeps that only touch manifest-managed files (e.g. a
+release-drafter fix rolled out everywhere) don't count. Pin a repo either way
+with `TIER_OVERRIDES` in that file.
+
+Active repos get a **Presentation** score (`tools/lib/presentation.mjs`) for
+what a visitor to the GitHub page sees:
+
+| Group | Checks |
+|---|---|
+| README | exists, H1 title, a badge, a screenshot/GIF (non-badge image), a Getting started / Install / Usage heading, a License heading |
+| Docs | `AGENTS.md`, `CLAUDE.md`, `CHANGELOG.md` |
+| GitHub (from `make meta`) | description set, 3+ topics, homepage set (only when the repo has a `wrangler.*` deploy target), default branch protected (classic rule or ruleset), no failing workflow on the default branch, at least one release |
+
+GitHub checks are skipped (not failed) without a `.github-meta.json` cache.
+`make changes` records each active repo's failing presentation checks and the
+tier, so the Monday diff reports `+ present` regressions, `- present` fixes and
+`TIER` moves — comparing only checks that were evaluable in both runs.
+
+Bless a deliberate exception with a `presentation:<key>` line in the repo's
+`.consistency-ignore` (keys: `readme title badges screenshot quickstart
+license-sec agents claude changelog description topics homepage protected
+ci-green release`), e.g. `presentation:screenshot` for a CLI with nothing to show.
 
 ## Intentional drift: `.consistency-ignore`
 

@@ -38,6 +38,10 @@ export const MANIFEST = [
   // (uppercase) — GitHub recognizes either casing, and this entry only fires
   // where neither casing exists yet.
   { dest: '.github/pull_request_template.md', src: join(TPL, '.github/pull_request_template.md'), types: ['all'], drift: false },
+  // Default review owner. Sourced from tools/templates (a clean one-liner) rather
+  // than ai-template-repo's commented-out example file; drift:false because
+  // repos like homehub/catastrophe carry richer path-specific rules.
+  { dest: '.github/CODEOWNERS', src: join(ROOT, 'tools', 'templates', 'CODEOWNERS'), types: ['all'], drift: false },
   // Label taxonomy + auto-labeling. label-sync uses delete-other-labels:false,
   // so it only adds/updates — never removes a repo's existing custom labels.
   { dest: '.github/labels.yml',                 src: join(TPL, '.github/labels.yml'),                 types: ['all'], drift: true  },

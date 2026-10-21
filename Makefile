@@ -21,7 +21,7 @@ NODE := node
 REPO ?=
 REPOFLAG := $(if $(REPO),--repo=$(REPO),)
 
-.PHONY: help doctor sync sync-apply drift changes dashboard new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status report report-quick secrets-audit secrets-sync secrets-sync-apply
+.PHONY: help doctor sync sync-apply drift changes dashboard meta new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status report report-quick secrets-audit secrets-sync secrets-sync-apply
 
 help:
 	@echo "Meta-workspace targets:"
@@ -42,6 +42,7 @@ help:
 	@echo "  make git-doctor            find stray .git internal files / broken refs (report only)"
 	@echo "  make git-doctor-fix        same, but delete what it finds"
 	@echo "  make renovate-status       aggregate each repo's Dependency Dashboard pending-update count"
+	@echo "  make meta                  refresh .github-meta.json (description, topics, protection, CI, releases) for presentation scoring"
 	@echo "  make report                full morning report (dashboard + git health + secrets + renovate + live CI)"
 	@echo "  make report-quick          same, local-only (no GitHub API calls)"
 	@echo "  add REPO=name to scope to one repo (e.g. make lint REPO=guess)"
@@ -63,6 +64,9 @@ changes:
 
 dashboard:
 	@$(NODE) tools/dashboard.mjs --open
+
+meta:
+	@$(NODE) tools/github-meta.mjs $(REPOFLAG)
 
 NAME ?=
 TYPE ?= node
