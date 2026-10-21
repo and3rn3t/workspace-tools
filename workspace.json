@@ -99,7 +99,7 @@
     "apple-photos-cleaner": {
       "group": "python",
       "summary": "Photos library audit/cleanup via its SQLite DB — packaged as a skill (`SKILL.md`)",
-      "featured": true,
+      "featured": false,
       "github": {
         "description": "OpenClaw skill for Apple Photos library cleanup, analysis, duplicate detection, and timeline recaps. Pure Python, no API tokens needed.",
         "homepage": "",
@@ -114,7 +114,7 @@
     "apple-shortcuts-doctor": {
       "group": "apple",
       "summary": "",
-      "featured": true,
+      "featured": false,
       "github": {
         "description": "",
         "homepage": "",
@@ -195,7 +195,7 @@
     "eslint-config": {
       "group": "meta",
       "summary": "Shared ESLint 9 flat config package for and3rn3t React + TypeScript repos — private, npm",
-      "featured": true,
+      "featured": false,
       "github": {
         "description": "Shared ESLint 9 flat config for and3rn3t React + TypeScript repos (ESLint 10 pending upstream plugin support).",
         "homepage": "",
@@ -240,7 +240,7 @@
     "flipper": {
       "group": "web",
       "summary": "Flipper Zero Lab — interactive experimentation dashboard, no hardware required",
-      "featured": true,
+      "featured": false,
       "github": {
         "description": "Flipper Zero Lab — interactive experimentation dashboard, no hardware required.",
         "homepage": "",
@@ -347,7 +347,7 @@
     "huggingface": {
       "group": "web",
       "summary": "HuggingFace Playground — browse datasets/models, experiment with AI APIs",
-      "featured": true,
+      "featured": false,
       "github": {
         "description": "Overview and sandbox for Hugging Face AI API",
         "homepage": "",
@@ -367,7 +367,7 @@
     "jonah": {
       "group": "web",
       "summary": "Personal portfolio for Jonah (GitHub Spark template)",
-      "featured": true,
+      "featured": false,
       "github": {
         "description": "Personal portfolio for Jonah (GitHub Spark template).",
         "homepage": "",
