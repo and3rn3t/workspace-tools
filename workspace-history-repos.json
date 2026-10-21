@@ -5,6 +5,7 @@
     "tier": "dormant",
     "consistency": 100,
     "presentation": null,
+    "health": 84,
     "failing_workflows": 1,
     "open_prs_human": 0
   },
@@ -14,6 +15,7 @@
     "tier": "active",
     "consistency": 97,
     "presentation": 56,
+    "health": 83,
     "failing_workflows": 1,
     "open_prs_human": 1
   },
@@ -23,6 +25,7 @@
     "tier": "active",
     "consistency": 97,
     "presentation": 100,
+    "health": 99,
     "failing_workflows": 0,
     "open_prs_human": 2
   },
@@ -32,6 +35,7 @@
     "tier": "active",
     "consistency": 100,
     "presentation": 93,
+    "health": 97,
     "failing_workflows": 0,
     "open_prs_human": 0
   },
@@ -41,6 +45,7 @@
     "tier": "active",
     "consistency": 88,
     "presentation": 73,
+    "health": 83,
     "failing_workflows": 0,
     "open_prs_human": 1
   },
@@ -50,6 +55,7 @@
     "tier": "active",
     "consistency": 34,
     "presentation": 86,
+    "health": 60,
     "failing_workflows": 0,
     "open_prs_human": 0
   },
@@ -59,6 +65,7 @@
     "tier": "dormant",
     "consistency": 96,
     "presentation": null,
+    "health": 98,
     "failing_workflows": 0,
     "open_prs_human": 0
   },
@@ -68,6 +75,7 @@
     "tier": "dormant",
     "consistency": 97,
     "presentation": null,
+    "health": 74,
     "failing_workflows": 1,
     "open_prs_human": 0
   },
@@ -77,6 +85,7 @@
     "tier": "dormant",
     "consistency": 97,
     "presentation": null,
+    "health": 74,
     "failing_workflows": 1,
     "open_prs_human": 0
   },
@@ -86,6 +95,7 @@
     "tier": "dormant",
     "consistency": 97,
     "presentation": null,
+    "health": 99,
     "failing_workflows": 0,
     "open_prs_human": 0
   },
@@ -95,6 +105,7 @@
     "tier": "active",
     "consistency": 100,
     "presentation": 60,
+    "health": 81,
     "failing_workflows": 1,
     "open_prs_human": 0
   },
@@ -104,6 +115,7 @@
     "tier": "dormant",
     "consistency": 97,
     "presentation": null,
+    "health": 99,
     "failing_workflows": 0,
     "open_prs_human": 0
   },
@@ -113,6 +125,7 @@
     "tier": "active",
     "consistency": 94,
     "presentation": 56,
+    "health": 78,
     "failing_workflows": 1,
     "open_prs_human": 1
   },
@@ -122,6 +135,7 @@
     "tier": "dormant",
     "consistency": 100,
     "presentation": null,
+    "health": 96,
     "failing_workflows": 2,
     "open_prs_human": 1
   },
@@ -131,6 +145,7 @@
     "tier": "active",
     "consistency": 100,
     "presentation": 88,
+    "health": 92,
     "failing_workflows": 3,
     "open_prs_human": 1
   },
@@ -140,6 +155,7 @@
     "tier": "dormant",
     "consistency": 96,
     "presentation": null,
+    "health": 95,
     "failing_workflows": 3,
     "open_prs_human": 0
   },
@@ -149,6 +165,7 @@
     "tier": "active",
     "consistency": 100,
     "presentation": 75,
+    "health": 79,
     "failing_workflows": 4,
     "open_prs_human": 1
   },
@@ -158,6 +175,7 @@
     "tier": "active",
     "consistency": 100,
     "presentation": 88,
+    "health": 92,
     "failing_workflows": 0,
     "open_prs_human": 1
   },
@@ -167,6 +185,7 @@
     "tier": "dormant",
     "consistency": 96,
     "presentation": null,
+    "health": 98,
     "failing_workflows": 0,
     "open_prs_human": 0
   },
@@ -176,6 +195,7 @@
     "tier": "active",
     "consistency": 97,
     "presentation": 69,
+    "health": 81,
     "failing_workflows": 0,
     "open_prs_human": 0
   },
@@ -185,6 +205,7 @@
     "tier": "dormant",
     "consistency": 100,
     "presentation": null,
+    "health": 100,
     "failing_workflows": 0,
     "open_prs_human": 1
   },
@@ -194,6 +215,7 @@
     "tier": "active",
     "consistency": 97,
     "presentation": 93,
+    "health": 97,
     "failing_workflows": 0,
     "open_prs_human": 0
   },
@@ -203,6 +225,7 @@
     "tier": "active",
     "consistency": 97,
     "presentation": 69,
+    "health": 82,
     "failing_workflows": 1,
     "open_prs_human": 1
   },
@@ -212,6 +235,7 @@
     "tier": "dormant",
     "consistency": 100,
     "presentation": null,
+    "health": 97,
     "failing_workflows": 2,
     "open_prs_human": 0
   },
@@ -221,6 +245,7 @@
     "tier": "dormant",
     "consistency": 96,
     "presentation": null,
+    "health": 73,
     "failing_workflows": 1,
     "open_prs_human": 0
   },
@@ -230,6 +255,7 @@
     "tier": "dormant",
     "consistency": 100,
     "presentation": null,
+    "health": 75,
     "failing_workflows": 1,
     "open_prs_human": 0
   },
@@ -239,6 +265,7 @@
     "tier": "dormant",
     "consistency": 100,
     "presentation": null,
+    "health": 80,
     "failing_workflows": 1,
     "open_prs_human": 0
   },
@@ -248,6 +275,7 @@
     "tier": "dormant",
     "consistency": 97,
     "presentation": null,
+    "health": 97,
     "failing_workflows": 1,
     "open_prs_human": 0
   },
@@ -257,6 +285,7 @@
     "tier": "dormant",
     "consistency": 100,
     "presentation": null,
+    "health": 99,
     "failing_workflows": 0,
     "open_prs_human": 0
   },
@@ -266,6 +295,7 @@
     "tier": "dormant",
     "consistency": 97,
     "presentation": null,
+    "health": 95,
     "failing_workflows": 2,
     "open_prs_human": 0
   },
@@ -275,6 +305,7 @@
     "tier": "dormant",
     "consistency": 100,
     "presentation": null,
+    "health": 67,
     "failing_workflows": 2,
     "open_prs_human": 0
   },
@@ -284,6 +315,7 @@
     "tier": "dormant",
     "consistency": 97,
     "presentation": null,
+    "health": 94,
     "failing_workflows": 2,
     "open_prs_human": 0
   },
@@ -293,6 +325,7 @@
     "tier": "dormant",
     "consistency": 96,
     "presentation": null,
+    "health": 69,
     "failing_workflows": 6,
     "open_prs_human": 0
   }
