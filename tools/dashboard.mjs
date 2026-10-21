@@ -31,9 +31,15 @@ const groupOf = d => GROUPS.find(g => g.match(d)).key;
 
 // Checks outside the manifest that still count toward the score.
 const hasCI = p => { try { return readdirSync(join(p, '.github', 'workflows')).some(f => /\.ya?ml$/.test(f)); } catch { return false; } };
+// One dependency bot per repo: Renovate enabled AND Dependabot version updates
+// configured means duplicate PRs. (hack/weather-app deliberately run Dependabot
+// with Renovate disabled — that's fine.)
+const renovateOn = p => { try { return JSON.parse(readFileSync(join(p, 'renovate.json'), 'utf8')).enabled !== false; } catch { return false; } };
+const dependabotUpdates = p => { try { return /package-ecosystem/.test(readFileSync(join(p, '.github', 'dependabot.yml'), 'utf8')); } catch { return false; } };
 const EXTRA = [
   { key: 'ci',     label: 'CI',     test: p => hasCI(p) },
   { key: 'agents', label: 'AGENTS', test: p => existsSync(join(p, 'AGENTS.md')) },
+  { key: 'onebot', label: '1 bot',  test: p => !(renovateOn(p) && dependabotUpdates(p)) },
 ];
 
 const gitInfo = p => { const r = spawnSync('git', ['-C', p, 'log', '-1', '--format=%cd', '--date=short'], { encoding: 'utf8' }); return r.status === 0 ? r.stdout.trim() : ''; };

@@ -4,9 +4,10 @@
 // Active = at least one human commit on the upstream branch in the last
 // ACTIVE_DAYS days that touches real project files. Bot commits (Renovate,
 // Dependabot, Actions) and workspace-wide sweeps that only touch managed
-// baseline files (e.g. a release-drafter fix rolled out to every repo) don't
-// count; repo-specific workflow changes do. Uses @{u} so work pushed from elsewhere counts even when
-// the local clone is behind; falls back to HEAD.
+// baseline files (e.g. a release-drafter fix rolled out to every repo) or
+// agent docs / bot config (AGENTS.md, CLAUDE.md, dependabot.yml) don't count;
+// repo-specific workflow changes do. Uses @{u} so work pushed from elsewhere
+// counts even when the local clone is behind; falls back to HEAD.
 
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -15,7 +16,8 @@ import { ROOT, MANIFEST } from './manifest.mjs';
 export const ACTIVE_DAYS = 90;
 const BOT = /renovate|dependabot|github-actions|\[bot\]/i;
 const MANAGED = new Set(MANIFEST.map(m => m.dest));
-const isHousekeeping = f => MANAGED.has(f) || f === '.consistency-ignore';
+const HOUSEKEEPING = new Set(['.consistency-ignore', 'AGENTS.md', 'CLAUDE.md', '.github/dependabot.yml']);
+const isHousekeeping = f => MANAGED.has(f) || HOUSEKEEPING.has(f);
 
 // Force a tier regardless of commit history, e.g. a seasonal project that
 // should stay polished: { 'weather-app': 'active' }.
