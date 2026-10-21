@@ -21,7 +21,7 @@ NODE := node
 REPO ?=
 REPOFLAG := $(if $(REPO),--repo=$(REPO),)
 
-.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard plan apply export workspace-init meta versions new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
+.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard plan apply export workspace-init meta versions merge-green merge-green-apply sites new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
 
 help:
 	@echo "Meta-workspace targets:"
@@ -49,6 +49,9 @@ help:
 	@echo "  make apply                 converge to workspace.json, asking per category (github/protection/renovate/archive/index)"
 	@echo "  make workspace-init        add workspace.json entries for undeclared repos, seeded from current state"
 	@echo "  make export                refresh GitHub data and write the hosted dashboard datasets (.dashboard-data/, workspace-history.json)"
+	@echo "  make merge-green           dry run: classify open bot PRs in active repos (green patch/minor vs major/failing)"
+	@echo "  make merge-green-apply     squash-merge the green patch/minor bot PRs (re-checked, never --admin)"
+	@echo "  make sites                 live-site uptime, link health and Lighthouse per site-check caller"
 	@echo "  make meta                  refresh .github-meta.json (description, topics, protection, CI, releases) for presentation scoring"
 	@echo "  make report                full morning report (dashboard + git health + secrets + renovate + live CI)"
 	@echo "  make report-quick          same, local-only (no GitHub API calls)"
@@ -94,6 +97,15 @@ workspace-init:
 
 export:
 	@$(NODE) tools/github-meta.mjs >/dev/null && $(NODE) tools/export.mjs
+
+merge-green:
+	@$(NODE) tools/merge-green.mjs $(REPOFLAG)
+
+merge-green-apply:
+	@$(NODE) tools/merge-green.mjs --apply $(REPOFLAG)
+
+sites:
+	@$(NODE) tools/sites.mjs --print
 
 meta:
 	@$(NODE) tools/github-meta.mjs $(REPOFLAG)

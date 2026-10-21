@@ -13,12 +13,13 @@ Run the weekly workspace check for Matt's GitHub dev folder. Use the device_bash
    - `make plan` (differences between workspace.json — the source of truth for repo settings — and reality; nothing is applied)
    - `make export` (writes the hosted dashboard's datasets to .dashboard-data/ and today's row in workspace-history.json)
    - `make dashboard` (regenerates the local dashboard.html; last line is the summary)
+   - `make merge-green` (DRY RUN only: lists green patch/minor bot PRs that could be merged, majors needing review, and failing ones)
    If `make` is unavailable, use `node tools/github-meta.mjs`, `node tools/sync-configs.mjs --since-last`, `node tools/plan.mjs`, `node tools/export.mjs`, `node tools/dashboard.mjs`.
 
-2. Refresh the hosted dashboard https://claude.ai/artifact/ExtjNb6AHaPEwEr73uTTkB: upload each of the six files in .dashboard-data/ (summary.json, repos.json, plan.json, ci.json, versions.json, history.json) as an asset of that artifact, then update each `datasets/<name>` document's `source.url` to the new `/_blob/<id>` and `updated` to `{at: <now ISO>, by: "Weekly repo drift"}`. If uploading isn't possible from this session, say so in the reply and continue.
+2. Refresh the hosted dashboard https://claude.ai/artifact/ExtjNb6AHaPEwEr73uTTkB: for each dataset in .dashboard-data/manifest.json whose sha256 differs from what the dashboard's `datasets/<name>` document currently points at, upload that file as an asset of the artifact, then update the `datasets/<name>` document's `source.url` to the new `/_blob/<id>` and `updated` to `{at: <now ISO>, by: "Weekly repo drift"}` (one batch write, pinned with if_version), and delete the superseded blobs. If uploading isn't possible from this session, say so in the reply and continue.
 
 3. Decide whether to notify:
-   - Send a push notification ONLY if `make changes` lists at least one NEW REPO, `+ missing`, `+ drift`, `+ present` or `TIER` line, the export shows failing workflows on an active repo that weren't failing last week, `make plan` shows changes in the `archive` or `protection` areas, or a command failed / the folder couldn't be reached.
+   - Send a push notification ONLY if `make changes` lists at least one NEW REPO, `+ missing`, `+ drift`, `+ present` or `TIER` line, a live site is down (`make sites`: up_now false), a new flaky workflow appears in .dashboard-data/flaky.json, the export shows failing workflows on an active repo that weren't failing last week, `make plan` shows changes in the `archive` or `protection` areas, or a command failed / the folder couldn't be reached.
    - Otherwise do NOT notify; write a one-line summary in the reply.
    - "-" lines alone (things got fixed) are good news: mention them, no notification.
 
@@ -28,4 +29,4 @@ Run the weekly workspace check for Matt's GitHub dev folder. Use the device_bash
    - Include the dashboard summary line and the hosted dashboard link.
    - For missing files recommend `make sync-apply` (or `REPO=<name>`); for settings differences recommend reviewing `make plan` then `make apply`. DO NOT apply anything automatically.
 
-Do not commit or push anything, and do not run `make apply`.
+Do not commit or push anything, and do not run `make apply` or `make merge-green-apply`.
