@@ -15,6 +15,7 @@ from the folder root via the top-level `Makefile`.
 | `make drift` | Report files that **exist but differ** from `ai-template-repo` — for manual review |
 | `make changes` | Week-over-week diff against `.consistency-snapshot.json`: **new repos**, newly missing files, new drift, and what got fixed — then re-snapshots. Add `--json` to `sync-configs.mjs` for machine-readable state |
 | `make dashboard` | Regenerate `dashboard.html` — a consistency scorecard across all repos, split into **Active** / **Dormant** tiers, with a **Presentation** score for active repos. Scored from the same manifest as `make sync`/`make drift` (`tools/lib/manifest.mjs`), so its drift count always matches the drift report |
+| `make versions` | Stack matrix: declared major of react, vite, vitest, typescript, tailwind, eslint, wrangler, playwright per repo (all `package.json`s merged, nested apps included), active repos first; majors behind the newest used in the workspace are highlighted. Also shown as the dashboard's (unscored) **Stack** column |
 | `make meta` | Refresh `.github-meta.json` (gitignored) from the GitHub API: description, homepage, topics, branch protection, latest run per active workflow on the default branch, latest release. Feeds the dashboard's Presentation score and `make report`'s CI section |
 | `make new-repo NAME=x TYPE=node\|python` | Scaffold a new sibling repo from the template so it starts 100% consistent |
 | `make lint` / `build` / `test` / `typecheck` / `format` / `audit` | Fan the command out across all repos, auto-detecting the package manager |

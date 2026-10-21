@@ -21,7 +21,7 @@ NODE := node
 REPO ?=
 REPOFLAG := $(if $(REPO),--repo=$(REPO),)
 
-.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard meta new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
+.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard meta versions new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
 
 help:
 	@echo "Meta-workspace targets:"
@@ -44,6 +44,7 @@ help:
 	@echo "  make git-doctor-fix        same, but delete what it finds"
 	@echo "  make renovate-tier         dry-run: point each renovate.json at the active/dormant preset (-apply to write)"
 	@echo "  make renovate-status       aggregate each repo's Dependency Dashboard pending-update count"
+	@echo "  make versions              stack matrix: key package majors per repo, highlighting ones behind the newest in use"
 	@echo "  make meta                  refresh .github-meta.json (description, topics, protection, CI, releases) for presentation scoring"
 	@echo "  make report                full morning report (dashboard + git health + secrets + renovate + live CI)"
 	@echo "  make report-quick          same, local-only (no GitHub API calls)"
@@ -74,6 +75,9 @@ changes:
 
 dashboard:
 	@$(NODE) tools/dashboard.mjs --open
+
+versions:
+	@$(NODE) tools/versions.mjs $(REPOFLAG)
 
 meta:
 	@$(NODE) tools/github-meta.mjs $(REPOFLAG)

@@ -18,6 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { ROOT, SNAPSHOT, evaluate, listRepos, typeLabel } from './lib/manifest.mjs';
 import { tierFor } from './lib/activity.mjs';
 import { evaluatePresentation, loadMeta } from './lib/presentation.mjs';
+import { repoVersions, workspaceLatest, behindOf } from './lib/versions.mjs';
 
 // Manifest files grouped into display columns (first matching rule wins).
 const GROUPS = [
@@ -44,6 +45,9 @@ const EXTRA = [
 
 const gitInfo = p => { const r = spawnSync('git', ['-C', p, 'log', '-1', '--format=%cd', '--date=short'], { encoding: 'utf8' }); return r.status === 0 ? r.stdout.trim() : ''; };
 const meta = loadMeta();
+// Stack column: key-package majors behind the newest in use (informational, not scored).
+const versions = Object.fromEntries(listRepos().map(r => [r, repoVersions(r)]));
+const latest = workspaceLatest(versions);
 let snapshot = null; try { snapshot = JSON.parse(readFileSync(SNAPSHOT, 'utf8')); } catch {}
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -67,6 +71,7 @@ const rows = listRepos().map(name => {
     missing: ev.missing, drift: ev.drift, blessed: ev.blessed,
     isNew: !!snapshot && !snapshot.repos[name], git: gitInfo(ev.repoPath),
     tier: tierFor(name), pres: evaluatePresentation(name, meta),
+    stack: Object.keys(versions[name]).length ? behindOf(versions[name], latest).map(p => `${p} ${versions[name][p]}→${latest[p]}`) : null,
   };
 }).sort((a, b) => (a.tier === b.tier ? a.name.localeCompare(b.name) : a.tier === 'active' ? -1 : 1));
 const active = rows.filter(r => r.tier === 'active');
@@ -108,8 +113,13 @@ const presCell = r => {
   const tip = failing.length ? ` title="missing: ${esc(failing.join(', '))}"` : '';
   return `<td${tip}>${p.score === null ? '<span class="sc na">–</span>' : `<span class="sc ${scoreClass(p.score)}">${p.score}%</span>`}${failing.length ? `<div class="type">${failing.length} to fix</div>` : ''}</td>`;
 };
-const COLS = 1 + GROUPS.length + EXTRA.length + 4;
-const row = r => `<tr><td class="repo">${esc(r.name)}${r.isNew?'<span class="new">NEW</span>':''}<div class="type">${esc(r.typeLabel)}</div></td>${GROUPS.map(g => groupCell(r.groups[g.key])).join('')}${r.extras.map(yn).join('')}<td>${r.score===null?'<span class="sc na">–</span>':`<span class="sc ${scoreClass(r.score)}">${r.score}%</span>`}</td>${presCell(r)}${driftCell(r)}<td class="git">${r.git||'—'}</td></tr>`;
+const stackCell = r => {
+  if (!r.stack) return '<td class="c na">–</td>';
+  if (!r.stack.length) return '<td class="c yes">✓</td>';
+  return `<td class="c part" title="${esc(r.stack.join(', '))}">${r.stack.length} behind</td>`;
+};
+const COLS = 1 + GROUPS.length + EXTRA.length + 5;
+const row = r => `<tr><td class="repo">${esc(r.name)}${r.isNew?'<span class="new">NEW</span>':''}<div class="type">${esc(r.typeLabel)}</div></td>${GROUPS.map(g => groupCell(r.groups[g.key])).join('')}${r.extras.map(yn).join('')}<td>${r.score===null?'<span class="sc na">–</span>':`<span class="sc ${scoreClass(r.score)}">${r.score}%</span>`}</td>${presCell(r)}${stackCell(r)}${driftCell(r)}<td class="git">${r.git||'—'}</td></tr>`;
 const section = (label, rs) => rs.length ? `<tr class="sec"><td colspan="${COLS}">${label} · ${rs.length}</td></tr>\n${rs.map(row).join('\n')}` : '';
 
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -162,12 +172,12 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
   <div class="card"><div class="l">No CI</div><div class="n" style="color:${noCI.length?'var(--bad)':'var(--ok)'}">${noCI.length}</div>${noCI.length?`<div class="l" style="margin-top:6px">${esc(noCI.join(', '))}</div>`:''}</div>
 </div>
 <div class="wrap"><table>
-<thead><tr><th class="repo">Repo</th>${GROUPS.map(g => `<th>${g.label}</th>`).join('')}${EXTRA.map(x => `<th>${x.label}</th>`).join('')}<th>Score</th><th>Presentation</th><th>Drift</th><th>Last commit</th></tr></thead>
+<thead><tr><th class="repo">Repo</th>${GROUPS.map(g => `<th>${g.label}</th>`).join('')}${EXTRA.map(x => `<th>${x.label}</th>`).join('')}<th>Score</th><th>Presentation</th><th>Stack</th><th>Drift</th><th>Last commit</th></tr></thead>
 <tbody>
 ${section('Active — human project commits in the last 90 days', active)}
 ${section('Dormant — baseline consistency only', dormant)}
 </tbody></table></div>
-<div class="legend">Group cells show managed files present / applicable for the repo's type (hover a partial cell to see what's missing). Groups and drift come from <code>tools/lib/manifest.mjs</code>, the same list <code>make sync</code> and <code>make drift</code> use. Drift = a file meant to converge exists but differs from the template; declare intentional variants in the repo's <code>.consistency-ignore</code> to bless them. NEW = not in the last <code>make changes</code> snapshot. Presentation (active repos only; hover for what's missing) covers README shape, AGENTS/CLAUDE/CHANGELOG, and GitHub-side description, topics, homepage, branch protection, green CI and releases from <code>make meta</code> — bless deliberate exceptions with a <code>presentation:&lt;key&gt;</code> line in <code>.consistency-ignore</code>. AGENTS/CLAUDE/eslint/tsconfig/prettier content is hand-owned and not compared.</div>
+<div class="legend">Group cells show managed files present / applicable for the repo's type (hover a partial cell to see what's missing). Groups and drift come from <code>tools/lib/manifest.mjs</code>, the same list <code>make sync</code> and <code>make drift</code> use. Drift = a file meant to converge exists but differs from the template; declare intentional variants in the repo's <code>.consistency-ignore</code> to bless them. NEW = not in the last <code>make changes</code> snapshot. Presentation (active repos only; hover for what's missing) covers README shape, AGENTS/CLAUDE/CHANGELOG, and GitHub-side description, topics, homepage, branch protection, green CI and releases from <code>make meta</code> — bless deliberate exceptions with a <code>presentation:&lt;key&gt;</code> line in <code>.consistency-ignore</code>. Stack = key packages (react, vite, vitest, typescript, tailwind, eslint, wrangler, playwright) whose declared major trails the newest used anywhere in the workspace — hover for which; details via <code>make versions</code>. Not scored. AGENTS/CLAUDE/eslint/tsconfig/prettier content is hand-owned and not compared.</div>
 </body></html>`;
 
 const out = join(ROOT, 'dashboard.html');
