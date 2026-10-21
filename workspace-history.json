@@ -3,7 +3,7 @@
     "date": "2026-10-21",
     "consistency": 96,
     "active_consistency": 93,
-    "active_presentation": 77,
+    "active_presentation": 79,
     "failing_workflows_active": 11,
     "ci_pass_rate_7d_active": 90,
     "pending_changes": 0,
