@@ -1,0 +1,145 @@
+// lib/manifest.mjs — single source of truth for what "consistent" means.
+// Used by sync-configs.mjs (sync / drift / snapshot) and dashboard.mjs, so the
+// scorecard and the drift report always measure exactly the same files.
+
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+export const TPL = join(ROOT, 'ai-template-repo');
+export const PYTPL = join(ROOT, 'tools', 'templates', 'python');
+export const GHTPL = join(ROOT, '.github', 'workflow-templates');
+export const SNAPSHOT = join(ROOT, '.consistency-snapshot.json');
+
+// Managed files. All created if-missing; `drift:true` means "worth flagging when
+// it exists but differs" (files that are meant to converge). Files expected to
+// diverge per-repo (renovate, LICENSE, .gitignore) have drift:false.
+export const MANIFEST = [
+  { dest: '.editorconfig',           src: join(TPL, '.editorconfig'),             types: ['all'],    drift: true  },
+  { dest: 'SECURITY.md',             src: join(TPL, 'SECURITY.md'),               types: ['all'],    drift: false },
+  { dest: 'LICENSE',                 src: join(TPL, 'LICENSE'),                   types: ['all'],    drift: false },
+  { dest: '.gitignore',              src: join(TPL, '.gitignore'),                types: ['all'],    drift: false },
+  { dest: '.nvmrc',                  src: join(TPL, '.nvmrc'),                     types: ['node'],   drift: true  },
+  { dest: 'commitlint.config.mjs',   src: join(TPL, 'commitlint.config.mjs'),     types: ['node'],   drift: false },
+  { dest: '.lintstagedrc.json',      src: join(TPL, '.lintstagedrc.json'),        types: ['node'],   drift: true  },
+  { dest: '.husky/commit-msg',       src: join(TPL, '.husky/commit-msg'),         types: ['node'],   drift: true,  exec: true },
+  { dest: 'renovate.json',           src: join(TPL, 'renovate.json'),             types: ['node'],   drift: false },
+  { dest: 'renovate.json',           src: join(PYTPL, 'renovate.json'),           types: ['python'], drift: false },
+  { dest: '.pre-commit-config.yaml', src: join(PYTPL, '.pre-commit-config.yaml'), types: ['python'], drift: true  },
+  // Community health files. Sourced from ai-template-repo, which already
+  // carries these; they just hadn't been wired into the manifest yet.
+  { dest: 'CODE_OF_CONDUCT.md',      src: join(TPL, 'CODE_OF_CONDUCT.md'),        types: ['all'],    drift: true  },
+  { dest: 'CONTRIBUTING.md',         src: join(TPL, 'CONTRIBUTING.md'),           types: ['all'],    drift: false },
+  { dest: '.github/ISSUE_TEMPLATE/bug_report.yml',     src: join(TPL, '.github/ISSUE_TEMPLATE/bug_report.yml'),     types: ['all'], drift: true },
+  { dest: '.github/ISSUE_TEMPLATE/feature_request.yml', src: join(TPL, '.github/ISSUE_TEMPLATE/feature_request.yml'), types: ['all'], drift: true },
+  { dest: '.github/ISSUE_TEMPLATE/config.yml',          src: join(TPL, '.github/ISSUE_TEMPLATE/config.yml'),          types: ['all'], drift: true },
+  // PR template. Note: some repos already carry PULL_REQUEST_TEMPLATE.md
+  // (uppercase) — GitHub recognizes either casing, and this entry only fires
+  // where neither casing exists yet.
+  { dest: '.github/pull_request_template.md', src: join(TPL, '.github/pull_request_template.md'), types: ['all'], drift: false },
+  // Label taxonomy + auto-labeling. label-sync uses delete-other-labels:false,
+  // so it only adds/updates — never removes a repo's existing custom labels.
+  { dest: '.github/labels.yml',                 src: join(TPL, '.github/labels.yml'),                 types: ['all'], drift: true  },
+  { dest: '.github/workflows/label-sync.yml',   src: join(TPL, '.github/workflows/label-sync.yml'),   types: ['all'], drift: false },
+  { dest: '.github/labeler.yml',                src: join(TPL, '.github/labeler.yml'),                types: ['all'], drift: true  },
+  { dest: '.github/workflows/labeler.yml',      src: join(TPL, '.github/workflows/labeler.yml'),      types: ['all'], drift: false },
+  // Release Drafter — drafts (never publishes) release notes from merged PR labels.
+  { dest: '.github/release-drafter.yml',            src: join(TPL, '.github/release-drafter.yml'),            types: ['all'], drift: true  },
+  { dest: '.github/workflows/release-drafter.yml',  src: join(TPL, '.github/workflows/release-drafter.yml'),  types: ['all'], drift: false },
+  // Lighthouse stub — sourced from ai-template-repo's DISABLED-by-default
+  // variant (workflow_dispatch only, no-op job), not the org workflow-templates
+  // version (which actively schedules a run against a placeholder URL).
+  { dest: '.github/workflows/lighthouse.yml', src: join(TPL, '.github/workflows/lighthouse.yml'), types: ['all'], drift: false },
+  // Dependency Review — calls and3rn3t/.github's reusable workflow; harmless
+  // no-op on repos with nothing to review.
+  { dest: '.github/workflows/dependency-review.yml', src: join(TPL, '.github/workflows/dependency-review.yml'), types: ['all'], drift: false },
+  // CodeQL — language-specific, so node and python get different source files.
+  // Not wired up for xcode/other types yet (Swift/C++ CodeQL needs a working
+  // build step first; add manually if you want it there).
+  { dest: '.github/workflows/codeql.yml', src: join(TPL, '.github/workflows/codeql.yml'), types: ['node'],   drift: true },
+  { dest: '.github/workflows/codeql.yml', src: join(PYTPL, 'codeql.yml'),                 types: ['python'], drift: true },
+  // Language-agnostic: every repo (including Xcode-only) should carry the PR-time
+  // consistency guard so drift on the files above gets caught automatically.
+  { dest: '.github/workflows/consistency.yml', src: join(GHTPL, 'consistency.yml'), types: ['all'], drift: true },
+  // Same logic for secret scanning — every repo, regardless of language.
+  { dest: '.github/workflows/gitleaks.yml', src: join(GHTPL, 'gitleaks.yml'), types: ['all'], drift: true },
+  // Stale-issue/PR closer. drift:false — repos are free to hand-tune their own
+  // thresholds/messages once created (see weather-app's richer version, which
+  // predates this and is intentionally left alone rather than overwritten).
+  { dest: '.github/workflows/stale.yml', src: join(GHTPL, 'stale.yml'), types: ['all'], drift: false },
+  // Validates every other workflow file's YAML against the real Actions
+  // schema — caught a real bug in reusable-cloudflare-pages-deploy.yml's
+  // first draft, so it earns its place as a universal baseline file too.
+  { dest: '.github/workflows/actionlint.yml', src: join(GHTPL, 'actionlint.yml'), types: ['all'], drift: true },
+];
+
+// Never treated as a sync target.
+export const SKIP = new Set(['ai-template-repo', '.github', '.git', 'tools', 'node_modules']);
+
+const hasXcode = (dir, depth) => {
+  if (depth < 0) return false;
+  let entries;
+  try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return false; }
+  for (const e of entries) {
+    if (e.name.endsWith('.xcodeproj')) return true;
+    if (e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules'
+        && hasXcode(join(dir, e.name), depth - 1)) return true;
+  }
+  return false;
+};
+
+// Manifest-level types: node / python / xcode (empty set = "other").
+export function detectTypes(repoPath) {
+  const t = new Set();
+  if (existsSync(join(repoPath, 'package.json'))) t.add('node');
+  if (existsSync(join(repoPath, 'pyproject.toml'))) t.add('python');
+  if (hasXcode(repoPath, 1)) t.add('xcode');
+  return t;
+}
+
+// Human label, e.g. "node·pnpm + xcode".
+export function typeLabel(repoPath, types = detectTypes(repoPath)) {
+  return [...types].map(t => t !== 'node' ? t
+    : existsSync(join(repoPath, 'pnpm-lock.yaml')) ? 'node·pnpm' : 'node·npm').join(' + ') || 'other';
+}
+
+export const applies = (fileTypes, repoTypes) => fileTypes.includes('all') || fileTypes.some(t => repoTypes.has(t));
+
+// A repo can declare intentional drift / absence in .consistency-ignore (one path per line).
+export function ignoredFor(repoPath) {
+  const f = join(repoPath, '.consistency-ignore');
+  if (!existsSync(f)) return new Set();
+  return new Set(readFileSync(f, 'utf8').split('\n').map(s => s.trim()).filter(s => s && !s.startsWith('#')));
+}
+
+export const listRepos = (onlyRepo) => readdirSync(ROOT, { withFileTypes: true })
+  .filter(e => e.isDirectory() && !SKIP.has(e.name) && !e.name.startsWith('.'))
+  .map(e => e.name)
+  .filter(name => !onlyRepo || name === onlyRepo)
+  .sort();
+
+// Evaluate one repo against the manifest. Each applicable entry gets a status:
+//   ok        exists, byte-identical to template
+//   missing   absent (would be created by --apply)
+//   drift     exists, differs, and the file is meant to converge (drift:true)
+//   vary      exists, differs, but per-repo variation is expected (drift:false)
+//   blessed   differs or absent, but declared in .consistency-ignore
+//   miss-src  the template source itself is missing
+export function evaluate(repo) {
+  const repoPath = join(ROOT, repo);
+  const types = detectTypes(repoPath);
+  const ignored = ignoredFor(repoPath);
+  const items = [];
+  for (const item of MANIFEST) {
+    if (!applies(item.types, types)) continue;
+    if (!existsSync(item.src)) { items.push({ item, status: 'miss-src' }); continue; }
+    const destPath = join(repoPath, item.dest);
+    if (!existsSync(destPath)) { items.push({ item, status: ignored.has(item.dest) ? 'blessed' : 'missing' }); continue; }
+    if (readFileSync(destPath).equals(readFileSync(item.src))) { items.push({ item, status: 'ok' }); continue; }
+    if (ignored.has(item.dest)) { items.push({ item, status: 'blessed' }); continue; }
+    items.push({ item, status: item.drift ? 'drift' : 'vary' });
+  }
+  const pick = s => items.filter(i => i.status === s).map(i => i.item.dest);
+  return { repo, repoPath, types, items, missing: pick('missing'), drift: pick('drift'), blessed: pick('blessed') };
+}

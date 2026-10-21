@@ -6,6 +6,7 @@
 #   make sync          dry-run: what baseline files are missing
 #   make sync-apply    create the missing baseline files
 #   make drift         report files that differ from ai-template-repo
+#   make changes       what's newly missing/drifted since the last run (updates the snapshot)
 #   make lint | build | test | typecheck | format | audit
 #   make status        git dirty/ahead-behind snapshot per repo
 #   make health        lint+typecheck+build(+test), one pass/fail per repo
@@ -20,7 +21,7 @@ NODE := node
 REPO ?=
 REPOFLAG := $(if $(REPO),--repo=$(REPO),)
 
-.PHONY: help doctor sync sync-apply drift dashboard new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status report report-quick secrets-audit secrets-sync secrets-sync-apply
+.PHONY: help doctor sync sync-apply drift changes dashboard new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status report report-quick secrets-audit secrets-sync secrets-sync-apply
 
 help:
 	@echo "Meta-workspace targets:"
@@ -29,6 +30,7 @@ help:
 	@echo "  make sync          dry-run: baseline files that would be created"
 	@echo "  make sync-apply    create missing baseline files (non-destructive)"
 	@echo "  make drift         report files that differ from the template"
+	@echo "  make changes       week-over-week diff: newly missing / drifted / new repos (updates snapshot)"
 	@echo "  make dashboard     generate dashboard.html (consistency scorecard)"
 	@echo "  make new-repo NAME=x [TYPE=node|python]   scaffold a consistent new repo"
 	@echo "  make lint|build|test|typecheck|format|audit   fan out across repos"
@@ -55,6 +57,9 @@ sync-apply:
 
 drift:
 	@$(NODE) tools/sync-configs.mjs --drift $(REPOFLAG)
+
+changes:
+	@$(NODE) tools/sync-configs.mjs --since-last $(REPOFLAG)
 
 dashboard:
 	@$(NODE) tools/dashboard.mjs --open

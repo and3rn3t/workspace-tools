@@ -12,7 +12,8 @@ from the folder root via the top-level `Makefile`.
 | `make sync` | Dry-run: show baseline files that are **missing** from any repo |
 | `make sync-apply` | Create those missing files (never overwrites existing ones) |
 | `make drift` | Report files that **exist but differ** from `ai-template-repo` — for manual review |
-| `make dashboard` | Regenerate `dashboard.html` — a consistency scorecard across all repos (coverage %, per-repo checks, drift, last commit) |
+| `make changes` | Week-over-week diff against `.consistency-snapshot.json`: **new repos**, newly missing files, new drift, and what got fixed — then re-snapshots. Add `--json` to `sync-configs.mjs` for machine-readable state |
+| `make dashboard` | Regenerate `dashboard.html` — a consistency scorecard across all repos. Scored from the same manifest as `make sync`/`make drift` (`tools/lib/manifest.mjs`), so its drift count always matches the drift report |
 | `make new-repo NAME=x TYPE=node\|python` | Scaffold a new sibling repo from the template so it starts 100% consistent |
 | `make lint` / `build` / `test` / `typecheck` / `format` / `audit` | Fan the command out across all repos, auto-detecting the package manager |
 | `make outdated` | Per-repo snapshot of outdated npm/pnpm deps, highlighting major bumps (needs installed deps; Python not included) |
@@ -26,7 +27,7 @@ from the folder root via the top-level `Makefile`.
 ## Automation
 
 - **`dashboard.html`** — open it in a browser for an at-a-glance scorecard. Regenerate with `make dashboard`. Self-contained, no server.
-- **Weekly drift check** — a scheduled task (`weekly-repo-drift`, Mondays) runs `make sync` + `make drift` + `make dashboard` and reports newly-missing files, drift, and repos without CI. It recommends `make sync-apply` but never applies changes automatically.
+- **Weekly drift check** — a scheduled task (`weekly-repo-drift`, Mondays) runs `make sync` + `make drift` + `make dashboard` and reports newly-missing files, drift, and repos without CI. `make changes` gives it a precise "since last week" diff. It recommends `make sync-apply` but never applies changes automatically.
 - **New repos start consistent** — always create them with `make new-repo` instead of `git init` from scratch, so they never need backfilling. As of this tooling update, `make new-repo` also drops in `.github/workflows/ci.yml` (from the node/python CI template) and `.github/workflows/consistency.yml`, so a brand-new repo has working CI and the drift guard from its first commit — no manual step required.
 - **New repos are auto-discovered** — every `make` target (`doctor`, `status`, `sync`, `drift`, `dashboard`, plus `lint`/`build`/`test`/etc.) lists repos by scanning the folder at run time; there's no registry file to update. The moment a new top-level directory exists here, it's included in the next run and in the Monday scheduled checks. The one thing that stays manual: adding a row to the root `CLAUDE.md` project index, and creating the actual GitHub remote (`new-repo.mjs` only does local scaffolding + `git init`, no `gh repo create`/push) — plus confirming the Renovate GitHub App is scoped to include the new repo if it isn't installed org-wide.
 
@@ -43,6 +44,10 @@ stricter variants that must not be clobbered (e.g. `health`'s project-specific
 touching anything, use `make drift` and reconcile by hand where it matters.
 
 ### Source of truth
+
+The managed-file manifest, type detection, `.consistency-ignore` handling and per-repo evaluation live in **`tools/lib/manifest.mjs`**. Both `sync-configs.mjs` and `dashboard.mjs` import it — edit the manifest there, not in either script.
+
+The root `.gitignore` ignores every top-level folder except `tools/` (`/*/` + `!/tools/`), so newly cloned repos never show up as untracked here; `make sync` tags repos missing from the last snapshot as **NEW**.
 
 Shared and Node baseline files come from **`ai-template-repo/`**. Python variants
 (a slimmer `renovate.json` and the `conventional-pre-commit` config) live in
@@ -89,7 +94,10 @@ commitlint.config.mjs
 ```
 
 Both `make drift` and the PR-time guard skip listed files; the dashboard shows
-them as "blessed" rather than counting them as drift.
+them as "blessed" rather than counting them as drift. Listing a file also
+opts the repo *out* of it: `make sync-apply` won't re-create a listed file the
+repo has deleted (e.g. `apple-photos-cleaner` drops the Lighthouse stub, since it's
+a CLI with no site to audit).
 
 ## Bundle size reporting (opt-in)
 

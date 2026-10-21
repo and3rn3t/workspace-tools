@@ -10,166 +10,106 @@
 //   node tools/sync-configs.mjs               # dry-run: show files that WOULD be created
 //   node tools/sync-configs.mjs --apply       # create the missing files
 //   node tools/sync-configs.mjs --drift       # report files that exist but differ from template
+//   node tools/sync-configs.mjs --since-last  # what changed since the last snapshot, then re-snapshot
+//   node tools/sync-configs.mjs --json        # machine-readable state of every repo
 //   node tools/sync-configs.mjs --repo=guess  # limit to one repo
 //   node tools/sync-configs.mjs --verbose     # also show in-sync files
 //
-// Managed files are type-aware (node / python / xcode / all). AGENTS.md,
-// CLAUDE.md, eslint, tsconfig, prettier are intentionally NOT managed here —
+// The manifest (which files, which repo types, drift or not) lives in
+// tools/lib/manifest.mjs and is shared with dashboard.mjs. AGENTS.md,
+// CLAUDE.md, eslint, tsconfig, prettier are intentionally NOT managed —
 // their content is inherently repo-specific.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, chmodSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const TPL = join(ROOT, 'ai-template-repo');
-const PYTPL = join(ROOT, 'tools', 'templates', 'python');
-const GHTPL = join(ROOT, '.github', 'workflow-templates');
+import { evaluate, listRepos, typeLabel, SNAPSHOT } from './lib/manifest.mjs';
 
 const args = process.argv.slice(2);
 const APPLY = args.includes('--apply');
 const DRIFT = args.includes('--drift');
 const VERBOSE = args.includes('--verbose');
+const JSON_OUT = args.includes('--json');
+const SINCE = args.includes('--since-last');
 const onlyRepo = (args.find(a => a.startsWith('--repo=')) || '').split('=')[1];
 
-// Managed files. All created if-missing; `drift:true` means "worth flagging when
-// it exists but differs" (files that are meant to converge). Files expected to
-// diverge per-repo (renovate, LICENSE, .gitignore) have drift:false.
-const MANIFEST = [
-  { dest: '.editorconfig',           src: join(TPL, '.editorconfig'),             types: ['all'],    drift: true  },
-  { dest: 'SECURITY.md',             src: join(TPL, 'SECURITY.md'),               types: ['all'],    drift: false },
-  { dest: 'LICENSE',                 src: join(TPL, 'LICENSE'),                   types: ['all'],    drift: false },
-  { dest: '.gitignore',              src: join(TPL, '.gitignore'),                types: ['all'],    drift: false },
-  { dest: '.nvmrc',                  src: join(TPL, '.nvmrc'),                     types: ['node'],   drift: true  },
-  { dest: 'commitlint.config.mjs',   src: join(TPL, 'commitlint.config.mjs'),     types: ['node'],   drift: false },
-  { dest: '.lintstagedrc.json',      src: join(TPL, '.lintstagedrc.json'),        types: ['node'],   drift: true  },
-  { dest: '.husky/commit-msg',       src: join(TPL, '.husky/commit-msg'),         types: ['node'],   drift: true,  exec: true },
-  { dest: 'renovate.json',           src: join(TPL, 'renovate.json'),             types: ['node'],   drift: false },
-  { dest: 'renovate.json',           src: join(PYTPL, 'renovate.json'),           types: ['python'], drift: false },
-  { dest: '.pre-commit-config.yaml', src: join(PYTPL, '.pre-commit-config.yaml'), types: ['python'], drift: true  },
-  // Community health files. Sourced from ai-template-repo, which already
-  // carries these; they just hadn't been wired into the manifest yet.
-  { dest: 'CODE_OF_CONDUCT.md',      src: join(TPL, 'CODE_OF_CONDUCT.md'),        types: ['all'],    drift: true  },
-  { dest: 'CONTRIBUTING.md',         src: join(TPL, 'CONTRIBUTING.md'),           types: ['all'],    drift: false },
-  { dest: '.github/ISSUE_TEMPLATE/bug_report.yml',     src: join(TPL, '.github/ISSUE_TEMPLATE/bug_report.yml'),     types: ['all'], drift: true },
-  { dest: '.github/ISSUE_TEMPLATE/feature_request.yml', src: join(TPL, '.github/ISSUE_TEMPLATE/feature_request.yml'), types: ['all'], drift: true },
-  { dest: '.github/ISSUE_TEMPLATE/config.yml',          src: join(TPL, '.github/ISSUE_TEMPLATE/config.yml'),          types: ['all'], drift: true },
-  // PR template. Note: some repos already carry PULL_REQUEST_TEMPLATE.md
-  // (uppercase) — GitHub recognizes either casing, and this entry only fires
-  // where neither casing exists yet.
-  { dest: '.github/pull_request_template.md', src: join(TPL, '.github/pull_request_template.md'), types: ['all'], drift: false },
-  // Label taxonomy + auto-labeling. label-sync uses delete-other-labels:false,
-  // so it only adds/updates — never removes a repo's existing custom labels.
-  { dest: '.github/labels.yml',                 src: join(TPL, '.github/labels.yml'),                 types: ['all'], drift: true  },
-  { dest: '.github/workflows/label-sync.yml',   src: join(TPL, '.github/workflows/label-sync.yml'),   types: ['all'], drift: false },
-  { dest: '.github/labeler.yml',                src: join(TPL, '.github/labeler.yml'),                types: ['all'], drift: true  },
-  { dest: '.github/workflows/labeler.yml',      src: join(TPL, '.github/workflows/labeler.yml'),      types: ['all'], drift: false },
-  // Release Drafter — drafts (never publishes) release notes from merged PR labels.
-  { dest: '.github/release-drafter.yml',            src: join(TPL, '.github/release-drafter.yml'),            types: ['all'], drift: true  },
-  { dest: '.github/workflows/release-drafter.yml',  src: join(TPL, '.github/workflows/release-drafter.yml'),  types: ['all'], drift: false },
-  // Lighthouse stub — sourced from ai-template-repo's DISABLED-by-default
-  // variant (workflow_dispatch only, no-op job), not the org workflow-templates
-  // version (which actively schedules a run against a placeholder URL).
-  { dest: '.github/workflows/lighthouse.yml', src: join(TPL, '.github/workflows/lighthouse.yml'), types: ['all'], drift: false },
-  // Dependency Review — calls and3rn3t/.github's reusable workflow; harmless
-  // no-op on repos with nothing to review.
-  { dest: '.github/workflows/dependency-review.yml', src: join(TPL, '.github/workflows/dependency-review.yml'), types: ['all'], drift: false },
-  // CodeQL — language-specific, so node and python get different source files.
-  // Not wired up for xcode/other types yet (Swift/C++ CodeQL needs a working
-  // build step first; add manually if you want it there).
-  { dest: '.github/workflows/codeql.yml', src: join(TPL, '.github/workflows/codeql.yml'), types: ['node'],   drift: true },
-  { dest: '.github/workflows/codeql.yml', src: join(PYTPL, 'codeql.yml'),                 types: ['python'], drift: true },
-  // Language-agnostic: every repo (including Xcode-only) should carry the PR-time
-  // consistency guard so drift on the files above gets caught automatically.
-  { dest: '.github/workflows/consistency.yml', src: join(GHTPL, 'consistency.yml'), types: ['all'], drift: true },
-  // Same logic for secret scanning — every repo, regardless of language.
-  { dest: '.github/workflows/gitleaks.yml', src: join(GHTPL, 'gitleaks.yml'), types: ['all'], drift: true },
-  // Stale-issue/PR closer. drift:false — repos are free to hand-tune their own
-  // thresholds/messages once created (see weather-app's richer version, which
-  // predates this and is intentionally left alone rather than overwritten).
-  { dest: '.github/workflows/stale.yml', src: join(GHTPL, 'stale.yml'), types: ['all'], drift: false },
-  // Validates every other workflow file's YAML against the real Actions
-  // schema — caught a real bug in reusable-cloudflare-pages-deploy.yml's
-  // first draft, so it earns its place as a universal baseline file too.
-  { dest: '.github/workflows/actionlint.yml', src: join(GHTPL, 'actionlint.yml'), types: ['all'], drift: true },
-];
+const C = { reset: '\x1b[0m', dim: '\x1b[2m', green: '\x1b[32m', yellow: '\x1b[33m', cyan: '\x1b[36m', red: '\x1b[31m', bold: '\x1b[1m' };
 
-// Never treated as a sync target.
-const SKIP = new Set(['ai-template-repo', '.github', '.git', 'tools', 'node_modules']);
+const results = listRepos(onlyRepo).map(evaluate);
 
-function detectTypes(repoPath) {
-  const t = new Set();
-  if (existsSync(join(repoPath, 'package.json'))) t.add('node');
-  if (existsSync(join(repoPath, 'pyproject.toml'))) t.add('python');
-  const hasXcode = (dir, depth) => {
-    if (depth < 0) return false;
-    let entries;
-    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return false; }
-    for (const e of entries) {
-      if (e.name.endsWith('.xcodeproj')) return true;
-      if (e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules'
-          && hasXcode(join(dir, e.name), depth - 1)) return true;
-    }
-    return false;
-  };
-  if (hasXcode(repoPath, 1)) t.add('xcode');
-  return t;
+const snapshotOf = (rs) => ({
+  generatedAt: new Date().toISOString(),
+  repos: Object.fromEntries(rs.map(r => [r.repo, { types: [...r.types], missing: r.missing, drift: r.drift, blessed: r.blessed }])),
+});
+const loadSnapshot = () => { try { return JSON.parse(readFileSync(SNAPSHOT, 'utf8')); } catch { return null; } };
+const totals = (rs) => rs.reduce((a, r) => {
+  for (const i of r.items) a[i.status] = (a[i.status] || 0) + 1;
+  return a;
+}, {});
+
+// ── --json ────────────────────────────────────────────────────────────────
+if (JSON_OUT) {
+  const snap = snapshotOf(results);
+  console.log(JSON.stringify({ ...snap, totals: totals(results) }, null, 2));
+  process.exit(0);
 }
 
-const applies = (fileTypes, repoTypes) => fileTypes.includes('all') || fileTypes.some(t => repoTypes.has(t));
+// ── --since-last ──────────────────────────────────────────────────────────
+if (SINCE) {
+  const prev = loadSnapshot();
+  const next = snapshotOf(results);
+  if (!prev) {
+    console.log(`${C.dim}no previous snapshot — baseline recorded at ${SNAPSHOT}${C.reset}`);
+  } else {
+    const when = prev.generatedAt.replace('T', ' ').slice(0, 16) + ' UTC';
+    const lines = [];
+    const diff = (a = [], b = []) => [b.filter(x => !a.includes(x)), a.filter(x => !b.includes(x))];
+    for (const [name, cur] of Object.entries(next.repos)) {
+      const old = prev.repos[name];
+      if (!old) { lines.push(`  ${C.cyan}NEW REPO${C.reset}  ${name} ${C.dim}(${cur.missing.length} missing, ${cur.drift.length} drift — run make sync-apply REPO=${name})${C.reset}`); continue; }
+      const [newMiss, fixedMiss] = diff(old.missing, cur.missing);
+      const [newDrift, fixedDrift] = diff(old.drift, cur.drift);
+      newMiss.forEach(f => lines.push(`  ${C.red}+ missing${C.reset} ${name}: ${f}`));
+      newDrift.forEach(f => lines.push(`  ${C.yellow}+ drift${C.reset}   ${name}: ${f}`));
+      fixedMiss.forEach(f => lines.push(`  ${C.green}- missing${C.reset} ${name}: ${f} ${C.dim}(now present)${C.reset}`));
+      fixedDrift.forEach(f => lines.push(`  ${C.green}- drift${C.reset}   ${name}: ${f} ${C.dim}(resolved or blessed)${C.reset}`));
+    }
+    if (!onlyRepo) for (const name of Object.keys(prev.repos)) if (!next.repos[name]) lines.push(`  ${C.dim}GONE      ${name} (no longer in workspace)${C.reset}`);
+    const count = (s, k) => Object.values(s.repos).reduce((a, r) => a + r[k].length, 0);
+    const delta = (k) => { const d = count(next, k) - count(prev, k); return d ? ` (${d > 0 ? '+' : ''}${d})` : ''; };
+    console.log(`${C.bold}Changes since ${when}${C.reset}`);
+    console.log(lines.length ? lines.join('\n') : `  ${C.dim}no changes${C.reset}`);
+    console.log(`\nnow: ${count(next, 'missing')} missing${delta('missing')} · ${count(next, 'drift')} drift${delta('drift')} · ${lines.length} change(s)`);
+  }
+  if (onlyRepo) console.log(`${C.dim}(--repo given: snapshot not updated)${C.reset}`);
+  else writeFileSync(SNAPSHOT, JSON.stringify(next, null, 2) + '\n');
+  process.exit(0);
+}
 
-// A repo can declare intentional drift in .consistency-ignore (one path per line).
-const ignoredFor = (repoPath) => {
-  const f = join(repoPath, '.consistency-ignore');
-  if (!existsSync(f)) return new Set();
-  return new Set(readFileSync(f, 'utf8').split('\n').map(s => s.trim()).filter(s => s && !s.startsWith('#')));
-};
-
-const listRepos = () => readdirSync(ROOT, { withFileTypes: true })
-  .filter(e => e.isDirectory() && !SKIP.has(e.name) && !e.name.startsWith('.'))
-  .map(e => e.name)
-  .filter(name => !onlyRepo || name === onlyRepo)
-  .sort();
-
-const C = { reset: '\x1b[0m', dim: '\x1b[2m', green: '\x1b[32m', yellow: '\x1b[33m', cyan: '\x1b[36m', red: '\x1b[31m' };
+// ── default / --apply / --drift ──────────────────────────────────────────
+const prev = loadSnapshot();
 let created = 0, driftCount = 0, inSync = 0;
-const driftDetail = [];
-
-for (const repo of listRepos()) {
-  const repoPath = join(ROOT, repo);
-  const types = detectTypes(repoPath);
-  const typeLabel = [...types].join('+') || 'other';
-  const ignored = ignoredFor(repoPath);
+for (const r of results) {
   const lines = [];
-
-  for (const item of MANIFEST) {
-    if (!applies(item.types, types)) continue;
-    if (!existsSync(item.src)) { lines.push(`  ${C.red}MISS-SRC${C.reset} ${item.dest} (template missing)`); continue; }
-
-    const destPath = join(repoPath, item.dest);
-    const srcContent = readFileSync(item.src);
-
-    if (!existsSync(destPath)) {
-      lines.push(`  ${C.green}CREATE${C.reset} ${item.dest}`);
+  for (const { item, status } of r.items) {
+    if (status === 'miss-src') { lines.push(`  ${C.red}MISS-SRC${C.reset} ${item.dest} (template missing)`); continue; }
+    if (status === 'missing') {
       created++;
-      if (APPLY) { mkdirSync(dirname(destPath), { recursive: true }); writeFileSync(destPath, srcContent); if (item.exec) chmodSync(destPath, 0o755); }
+      if (!DRIFT) lines.push(`  ${C.green}CREATE${C.reset} ${item.dest}`);
+      if (APPLY) { const d = join(r.repoPath, item.dest); mkdirSync(dirname(d), { recursive: true }); writeFileSync(d, readFileSync(item.src)); if (item.exec) chmodSync(d, 0o755); }
       continue;
     }
-
-    // exists — check drift only for convergent files
-    const same = readFileSync(destPath).equals(srcContent);
-    if (same) { inSync++; if (VERBOSE) lines.push(`  ${C.dim}ok     ${item.dest}${C.reset}`); continue; }
-    if (ignored.has(item.dest)) { inSync++; if (VERBOSE) lines.push(`  ${C.dim}bless  ${item.dest} (declared in .consistency-ignore)${C.reset}`); continue; }
-    if (item.drift) {
-      driftCount++;
-      driftDetail.push(`${repo}: ${item.dest}`);
-      if (DRIFT || VERBOSE) lines.push(`  ${C.yellow}DRIFT ${C.reset} ${item.dest} ${C.dim}(differs from template — review manually)${C.reset}`);
-    } else if (VERBOSE) {
-      lines.push(`  ${C.dim}vary   ${item.dest} (per-repo, expected)${C.reset}`);
-    }
+    if (status === 'drift') { driftCount++; if (DRIFT || VERBOSE) lines.push(`  ${C.yellow}DRIFT ${C.reset} ${item.dest} ${C.dim}(differs from template — review manually)${C.reset}`); continue; }
+    if (status !== 'vary') inSync++;   // vary = expected per-repo divergence, not counted either way
+    if (!VERBOSE) continue;
+    if (status === 'ok') lines.push(`  ${C.dim}ok     ${item.dest}${C.reset}`);
+    else if (status === 'blessed') lines.push(`  ${C.dim}bless  ${item.dest} (declared in .consistency-ignore)${C.reset}`);
+    else if (status === 'vary') lines.push(`  ${C.dim}vary   ${item.dest} (per-repo, expected)${C.reset}`);
   }
-
-  if (lines.length) { console.log(`${C.cyan}${repo}${C.reset} ${C.dim}[${typeLabel}]${C.reset}`); lines.forEach(l => console.log(l)); }
+  const isNew = prev && !prev.repos[r.repo];
+  if (lines.length || isNew) {
+    console.log(`${C.cyan}${r.repo}${C.reset} ${C.dim}[${typeLabel(r.repoPath, r.types)}]${C.reset}${isNew ? ` ${C.bold}NEW${C.reset} ${C.dim}(not in last snapshot)${C.reset}` : ''}`);
+    lines.forEach(l => console.log(l));
+  }
 }
 
 console.log(`\n${C.dim}────────────────────────────────────────${C.reset}`);
