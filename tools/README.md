@@ -16,6 +16,7 @@ from the folder root via the top-level `Makefile`.
 | `make changes` | Week-over-week diff against `.consistency-snapshot.json`: **new repos**, newly missing files, new drift, and what got fixed — then re-snapshots. Add `--json` to `sync-configs.mjs` for machine-readable state |
 | `make dashboard` | Regenerate `dashboard.html` — a consistency scorecard across all repos, split into **Active** / **Dormant** tiers, with a **Presentation** score for active repos. Scored from the same manifest as `make sync`/`make drift` (`tools/lib/manifest.mjs`), so its drift count always matches the drift report |
 | `make versions` | Stack matrix: declared major of react, vite, vitest, typescript, tailwind, eslint, wrangler, playwright per repo (all `package.json`s merged, nested apps included), active repos first; majors behind the newest used in the workspace are highlighted. Also shown as the dashboard's (unscored) **Stack** column |
+| `make export` | Refresh GitHub data and write the hosted dashboard's datasets (`.dashboard-data/*.json`) plus today's row in `workspace-history.json` |
 | `make meta` | Refresh `.github-meta.json` (gitignored) from the GitHub API: description, homepage, topics, branch protection, latest run per active workflow on the default branch, latest release. Feeds the dashboard's Presentation score and `make report`'s CI section |
 | `make new-repo NAME=x TYPE=node\|python` | Scaffold a new sibling repo from the template so it starts 100% consistent |
 | `make lint` / `build` / `test` / `typecheck` / `format` / `audit` | Fan the command out across all repos, auto-detecting the package manager |
@@ -109,6 +110,17 @@ runs). GitHub-side changes go through `gh`; `renovate.json` and the root
 `CLAUDE.md` project index are rewritten locally for you to commit. The index is
 generated — edit summaries in `workspace.json`, not in `CLAUDE.md`.
 New repo? `make workspace-init` adds an entry seeded from its current state.
+
+## Hosted dashboard
+
+A private claude.ai dashboard (**and3rn3t Workspace**,
+https://claude.ai/artifact/ExtjNb6AHaPEwEr73uTTkB) shows the same data as
+`dashboard.html` plus pending `make plan` changes, failing workflows, the stack
+matrix and a daily trend, readable from any device. Its data is six JSON files
+written by `make export` (`tools/export.mjs` → `.dashboard-data/`, gitignored)
+and uploaded to the page by Claude; `workspace-history.json` (tracked) keeps one
+row per export day for the trend. Refresh: `make export`, then ask Claude to
+upload the six files to the dashboard (the Monday task does this).
 
 ## Activity tiers & presentation score
 

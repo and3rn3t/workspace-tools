@@ -8,8 +8,10 @@ dashboard.html
 .consistency-snapshot.json
 .github-meta.json
 
+
 # Every top-level folder is its own repo (or a cache) and is ignored by default,
 # so newly cloned repos never show up as untracked noise here. Only the
 # workspace tooling itself is tracked. Add a `!/<dir>/` line to track another.
 /*/
 !/tools/
+.dashboard-data/

@@ -1,0 +1,11 @@
+[
+  {
+    "date": "2026-10-21",
+    "consistency": 95,
+    "active_consistency": 92,
+    "active_presentation": 82,
+    "failing_workflows_active": 11,
+    "pending_changes": 9,
+    "active": 13
+  }
+]

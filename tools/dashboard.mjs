@@ -15,33 +15,11 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { ROOT, SNAPSHOT, evaluate, listRepos, typeLabel } from './lib/manifest.mjs';
+import { ROOT, SNAPSHOT, listRepos, typeLabel } from './lib/manifest.mjs';
+import { GROUPS, EXTRA, scoreRepo } from './lib/scores.mjs';
 import { tierFor } from './lib/activity.mjs';
 import { evaluatePresentation, loadMeta } from './lib/presentation.mjs';
 import { repoVersions, workspaceLatest, behindOf } from './lib/versions.mjs';
-
-// Manifest files grouped into display columns (first matching rule wins).
-const GROUPS = [
-  { key: 'baseline',  label: 'Baseline',   match: d => ['.editorconfig', 'SECURITY.md', 'LICENSE', '.gitignore', '.nvmrc', 'renovate.json'].includes(d) },
-  { key: 'hooks',     label: 'Hooks',      match: d => ['commitlint.config.mjs', '.lintstagedrc.json', '.husky/commit-msg', '.pre-commit-config.yaml'].includes(d) },
-  { key: 'community', label: 'Community',  match: d => /^(CODE_OF_CONDUCT|CONTRIBUTING)\.md$|ISSUE_TEMPLATE|pull_request_template/.test(d) },
-  { key: 'guards',    label: 'Guards',     match: d => /workflows\/(codeql|gitleaks|consistency|actionlint|dependency-review)\.yml$/.test(d) },
-  { key: 'automation',label: 'Automation', match: () => true },
-];
-const groupOf = d => GROUPS.find(g => g.match(d)).key;
-
-// Checks outside the manifest that still count toward the score.
-const hasCI = p => { try { return readdirSync(join(p, '.github', 'workflows')).some(f => /\.ya?ml$/.test(f)); } catch { return false; } };
-// One dependency bot per repo: Renovate enabled AND Dependabot version updates
-// configured means duplicate PRs. (hack/weather-app deliberately run Dependabot
-// with Renovate disabled — that's fine.)
-const renovateOn = p => { try { return JSON.parse(readFileSync(join(p, 'renovate.json'), 'utf8')).enabled !== false; } catch { return false; } };
-const dependabotUpdates = p => { try { return /package-ecosystem/.test(readFileSync(join(p, '.github', 'dependabot.yml'), 'utf8')); } catch { return false; } };
-const EXTRA = [
-  { key: 'ci',     label: 'CI',     test: p => hasCI(p) },
-  { key: 'agents', label: 'AGENTS', test: p => existsSync(join(p, 'AGENTS.md')) },
-  { key: 'onebot', label: '1 bot',  test: p => !(renovateOn(p) && dependabotUpdates(p)) },
-];
 
 const gitInfo = p => { const r = spawnSync('git', ['-C', p, 'log', '-1', '--format=%cd', '--date=short'], { encoding: 'utf8' }); return r.status === 0 ? r.stdout.trim() : ''; };
 const meta = loadMeta();
@@ -51,23 +29,11 @@ const latest = workspaceLatest(versions);
 let snapshot = null; try { snapshot = JSON.parse(readFileSync(SNAPSHOT, 'utf8')); } catch {}
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const PRESENT = new Set(['ok', 'drift', 'vary', 'blessed']);
 
 const rows = listRepos().map(name => {
-  const ev = evaluate(name);
-  const groups = Object.fromEntries(GROUPS.map(g => [g.key, { have: 0, total: 0, missing: [] }]));
-  for (const { item, status } of ev.items) {
-    if (status === 'miss-src') continue;
-    const g = groups[groupOf(item.dest)];
-    g.total++;
-    if (PRESENT.has(status)) g.have++; else g.missing.push(item.dest);
-  }
-  const extras = EXTRA.map(x => x.test(ev.repoPath));
-  const have = Object.values(groups).reduce((a, g) => a + g.have, 0) + extras.filter(Boolean).length;
-  const total = Object.values(groups).reduce((a, g) => a + g.total, 0) + extras.length;
+  const { ev, groups, extras, have, total, score } = scoreRepo(name);
   return {
-    name, typeLabel: typeLabel(ev.repoPath, ev.types), groups, extras, have, total,
-    score: total ? Math.round((have / total) * 100) : null,
+    name, typeLabel: typeLabel(ev.repoPath, ev.types), groups, extras, have, total, score,
     missing: ev.missing, drift: ev.drift, blessed: ev.blessed,
     isNew: !!snapshot && !snapshot.repos[name], git: gitInfo(ev.repoPath),
     tier: tierFor(name), pres: evaluatePresentation(name, meta),
