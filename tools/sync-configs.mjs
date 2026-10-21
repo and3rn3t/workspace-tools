@@ -2,7 +2,8 @@
 // sync-configs.mjs — keep repos consistent with ai-template-repo, safely.
 //
 // Philosophy: NON-DESTRUCTIVE. This tool only ever *creates missing* files.
-// It never overwrites a file a repo already has — several repos (health, guess,
+// It never overwrites a file a repo already has unless you name that file with
+// --update=<path> — several repos (health, guess,
 // apple-photos-cleaner) legitimately carry richer/stricter variants and those
 // must not be clobbered. To surface divergence, use the drift report, which
 // only *reports* — you decide what to reconcile by hand.
@@ -12,6 +13,8 @@
 //   node tools/sync-configs.mjs --drift       # report files that exist but differ from template
 //   node tools/sync-configs.mjs --since-last  # what changed since the last snapshot, then re-snapshot
 //   node tools/sync-configs.mjs --json        # machine-readable state of every repo
+//   node tools/sync-configs.mjs --update=.nvmrc          # dry-run: drifted copies of ONE named file that would be overwritten
+//   node tools/sync-configs.mjs --update=.nvmrc --apply  # overwrite them from the template
 //   node tools/sync-configs.mjs --repo=guess  # limit to one repo
 //   node tools/sync-configs.mjs --verbose     # also show in-sync files
 //
@@ -33,6 +36,10 @@ const VERBOSE = args.includes('--verbose');
 const JSON_OUT = args.includes('--json');
 const SINCE = args.includes('--since-last');
 const onlyRepo = (args.find(a => a.startsWith('--repo=')) || '').split('=')[1];
+// --update=<dest>: the one deliberate exception to "never overwrite". Only for a
+// drift-tracked file you name explicitly, only where it has drifted, and never
+// where the repo blessed it in .consistency-ignore (those report as 'blessed').
+const UPDATE = (args.find(a => a.startsWith('--update=')) || '').split('=')[1];
 
 const C = { reset: '\x1b[0m', dim: '\x1b[2m', green: '\x1b[32m', yellow: '\x1b[33m', cyan: '\x1b[36m', red: '\x1b[31m', bold: '\x1b[1m' };
 
@@ -104,6 +111,22 @@ if (SINCE) {
   }
   if (onlyRepo) console.log(`${C.dim}(--repo given: snapshot not updated)${C.reset}`);
   else writeFileSync(SNAPSHOT, JSON.stringify(next, null, 2) + '\n');
+  process.exit(0);
+}
+
+// ── --update=<file> ───────────────────────────────────────────────────────
+if (UPDATE) {
+  let n = 0;
+  for (const r of results) {
+    const hit = r.items.find(i => i.item.dest === UPDATE && i.status === 'drift');
+    if (!hit) continue;
+    n++;
+    if (APPLY) { const d = join(r.repoPath, UPDATE); writeFileSync(d, readFileSync(hit.item.src)); if (hit.item.exec) chmodSync(d, 0o755); }
+    console.log(`  ${C.yellow}${APPLY ? 'UPDATED' : 'UPDATE '}${C.reset} ${r.repo}: ${UPDATE}`);
+  }
+  const tracked = results.some(r => r.items.some(i => i.item.dest === UPDATE && i.item.drift));
+  if (!tracked) console.log(`${C.red}${UPDATE} is not a drift-tracked manifest file — nothing to update${C.reset}`);
+  console.log(`\n${APPLY ? 'updated' : 'would update'}: ${n} drifted ${UPDATE}${!APPLY && n ? ` ${C.dim}(re-run with --apply)${C.reset}` : ''}`);
   process.exit(0);
 }
 

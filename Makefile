@@ -21,7 +21,7 @@ NODE := node
 REPO ?=
 REPOFLAG := $(if $(REPO),--repo=$(REPO),)
 
-.PHONY: help doctor sync sync-apply drift changes dashboard meta new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status report report-quick secrets-audit secrets-sync secrets-sync-apply
+.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard meta new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
 
 help:
 	@echo "Meta-workspace targets:"
@@ -29,6 +29,7 @@ help:
 	@echo "  make status        git dirty/ahead-behind snapshot per repo"
 	@echo "  make sync          dry-run: baseline files that would be created"
 	@echo "  make sync-apply    create missing baseline files (non-destructive)"
+	@echo "  make sync-update FILE=f  dry-run: drifted copies of one drift-tracked file that would be overwritten (-apply to do it)"
 	@echo "  make drift         report files that differ from the template"
 	@echo "  make changes       week-over-week diff: newly missing / drifted / new repos (updates snapshot)"
 	@echo "  make dashboard     generate dashboard.html (consistency scorecard)"
@@ -41,6 +42,7 @@ help:
 	@echo "  make secrets-sync-apply   actually push shared secrets via gh secret set"
 	@echo "  make git-doctor            find stray .git internal files / broken refs (report only)"
 	@echo "  make git-doctor-fix        same, but delete what it finds"
+	@echo "  make renovate-tier         dry-run: point each renovate.json at the active/dormant preset (-apply to write)"
 	@echo "  make renovate-status       aggregate each repo's Dependency Dashboard pending-update count"
 	@echo "  make meta                  refresh .github-meta.json (description, topics, protection, CI, releases) for presentation scoring"
 	@echo "  make report                full morning report (dashboard + git health + secrets + renovate + live CI)"
@@ -55,6 +57,14 @@ sync:
 
 sync-apply:
 	@$(NODE) tools/sync-configs.mjs --apply $(REPOFLAG)
+
+sync-update:
+	@test -n "$(FILE)" || { echo "usage: make sync-update FILE=.nvmrc [REPO=name]"; exit 2; }
+	@$(NODE) tools/sync-configs.mjs --update=$(FILE) $(REPOFLAG)
+
+sync-update-apply:
+	@test -n "$(FILE)" || { echo "usage: make sync-update-apply FILE=.nvmrc [REPO=name]"; exit 2; }
+	@$(NODE) tools/sync-configs.mjs --update=$(FILE) --apply $(REPOFLAG)
 
 drift:
 	@$(NODE) tools/sync-configs.mjs --drift $(REPOFLAG)
@@ -115,6 +125,12 @@ git-doctor:
 
 git-doctor-fix:
 	@$(NODE) tools/git-doctor.mjs --fix $(REPOFLAG)
+
+renovate-tier:
+	@$(NODE) tools/renovate-tier.mjs $(REPOFLAG)
+
+renovate-tier-apply:
+	@$(NODE) tools/renovate-tier.mjs --apply $(REPOFLAG)
 
 renovate-status:
 	@$(NODE) tools/renovate-status.mjs $(REPOFLAG)

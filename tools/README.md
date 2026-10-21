@@ -11,6 +11,7 @@ from the folder root via the top-level `Makefile`.
 | `make status` | Git snapshot per repo: uncommitted file count, ahead/behind vs. upstream |
 | `make sync` | Dry-run: show baseline files that are **missing** from any repo |
 | `make sync-apply` | Create those missing files (never overwrites existing ones) |
+| `make sync-update FILE=f` / `sync-update-apply` | The one deliberate overwrite: replace drifted copies of **one named, drift-tracked** file with the template version (e.g. after bumping `ai-template-repo/.nvmrc`). Blessed files are never touched; `vary` files (LICENSE, renovate.json…) are refused |
 | `make drift` | Report files that **exist but differ** from `ai-template-repo` — for manual review |
 | `make changes` | Week-over-week diff against `.consistency-snapshot.json`: **new repos**, newly missing files, new drift, and what got fixed — then re-snapshots. Add `--json` to `sync-configs.mjs` for machine-readable state |
 | `make dashboard` | Regenerate `dashboard.html` — a consistency scorecard across all repos, split into **Active** / **Dormant** tiers, with a **Presentation** score for active repos. Scored from the same manifest as `make sync`/`make drift` (`tools/lib/manifest.mjs`), so its drift count always matches the drift report |
@@ -21,7 +22,8 @@ from the folder root via the top-level `Makefile`.
 | `make secrets-audit` | Cross-check every repo's `.github/workflows/*.yml` for `secrets.X` references against the Actions secrets actually configured on GitHub (via `gh`/API) — flags what's referenced but never set |
 | `make secrets-sync` / `secrets-sync-apply` | Push shared secret values from a local, gitignored `.secrets.local.json` to many repos at once via `gh secret set`, instead of re-entering the same value per repo in the UI |
 | `make health` | Lint + typecheck + build (+ test) per repo, **one** pass/fail per repo instead of one per sub-command — a lightweight CI surrogate for the polyrepo setup |
-| `make git-doctor` / `git-doctor-fix` | Find (and optionally delete) stray duplicate files inside `.git/` — `index 2`, `HEAD 2`, broken refs, etc. Not cosmetic: these have twice broken `git fetch`/`status` outright this session |
+| `make git-doctor` / `git-doctor-fix` | Find (and optionally delete) stray duplicate files inside `.git/` — `index 2`, `HEAD 2`, broken refs, etc. — plus stale `*.lock` files older than a day (`--fix` removes only empty ones). Not cosmetic: these have twice broken `git fetch`/`status` outright this session |
+| `make renovate-tier` / `renovate-tier-apply` | Point each `renovate.json` at the preset for its activity tier — `renovate-config` (active) or `renovate-config-dormant` (monthly window, 2 open PRs). Swaps only the and3rn3t preset entry; skips archived repos and `"enabled": false`, and flags active repos with Renovate disabled |
 | `make renovate-status` | Aggregate every repo's Renovate "Dependency Dashboard" issue into one sorted view of pending major-bump approvals |
 | `make report` / `report-quick` | One consolidated "morning report": refreshes `make meta`, then dashboard + git health + local git status + secrets audit + Renovate backlog + CI status (every failing workflow on each default branch). `-quick` skips anything needing the GitHub API |
 
@@ -110,6 +112,10 @@ Bless a deliberate exception with a `presentation:<key>` line in the repo's
 `.consistency-ignore` (keys: `readme title badges screenshot quickstart
 license-sec agents claude changelog description topics homepage protected
 ci-green release`), e.g. `presentation:screenshot` for a CLI with nothing to show.
+
+### Other dashboard checks
+
+- **1 bot** — fails when a repo has Renovate enabled *and* Dependabot version updates in `.github/dependabot.yml` (duplicate PRs). Repos that deliberately use Dependabot with `"enabled": false` in `renovate.json` (hack, weather-app) pass.
 
 ## Intentional drift: `.consistency-ignore`
 
