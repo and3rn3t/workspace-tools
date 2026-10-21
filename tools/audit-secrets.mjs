@@ -65,7 +65,9 @@ function referencedSecrets(repoPath) {
   const map = new Map();
   for (const f of readdirSync(wfDir)) {
     if (!f.endsWith('.yml') && !f.endsWith('.yaml')) continue;
-    const content = readFileSync(join(wfDir, f), 'utf8');
+    // Drop whole-line YAML comments: commented-out steps (e.g. the template's
+    // disabled npm/PyPI publish in release.yml) don't need their secrets set.
+    const content = readFileSync(join(wfDir, f), 'utf8').split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
     const matches = content.matchAll(/secrets\.([A-Z_][A-Z0-9_]*)/g);
     for (const m of matches) {
       const name = m[1];
@@ -88,6 +90,13 @@ for (const repo of listRepos()) {
   try {
     const data = await gh(`/repos/${OWNER}/${repo}/actions/secrets`);
     configured = new Set((data?.secrets || []).map(s => s.name));
+    // Deployment-environment secrets count too (e.g. apple-music-dj keeps
+    // CLAWHUB_TOKEN in its approval-gated `clawhub` environment).
+    const envs = await gh(`/repos/${OWNER}/${repo}/environments`);
+    for (const env of envs?.environments || []) {
+      const envSecrets = await gh(`/repos/${OWNER}/${repo}/environments/${encodeURIComponent(env.name)}/secrets`);
+      for (const s of envSecrets?.secrets || []) configured.add(s.name);
+    }
   } catch (e) {
     console.error(`${repo}: could not read secrets (${e.message}) — skipping`);
     continue;
