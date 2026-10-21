@@ -134,6 +134,8 @@ const versionRows = names.flatMap(name => KEY_PACKAGES.filter(p => versions[name
 })));
 
 const planRows = plan.map(c => ({ category: c.category, repo: c.repo, field: c.field, actual: String(c.actual ?? ''), desired: String(c.desired ?? '') }));
+// The dashboard refuses a file with no rows; an all-blank row stands for "no changes" (the page skips it).
+if (!planRows.length) planRows.push({ category: '', repo: '', field: '', actual: '', desired: '' });
 
 let ciHistory = [];
 try { ciHistory = JSON.parse(readFileSync(join(OUT, 'ci_history.json'), 'utf8')); } catch {}
