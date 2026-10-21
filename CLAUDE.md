@@ -26,23 +26,23 @@ All of Matt's (and3rn3t) development projects. GitHub remotes live under `github
 | `posture` | Spark template starter (early stage) |
 | `cats` | "Cat Collector" — educational cat-breed collection game for kids — npm |
 | `family` | Family Organizer — chore/schedule kiosk app for Raspberry Pi 4B — npm |
-| `net-traffic` | NetInsight — network traffic analysis dashboard — npm |
+| `net-traffic` ✓ | NetInsight — network traffic analysis dashboard — npm |
 | `silas` | Personal website for Silas Anderson, with an embedded RPG game — npm |
 | `telescope` | JWST Deep Sky Explorer — 3D telescope visualization using NASA APIs (GitHub Spark template) — npm |
-| `sky` | Celestial-event discovery platform — location-aware night-sky alerts (GitHub Spark template, early stage) — npm |
+| `sky` ✓ | Celestial-event discovery platform — location-aware night-sky alerts (GitHub Spark template, early stage) — npm |
 
 ## Python (CLI tools & skills)
 
 | Repo | What it is |
 |---|---|
 | `amiibo` ✓ | amiibo-flipper — fetch amiibo metadata, export Flipper-friendly files |
-| `apple-music-dj` | Apple Music curation engine — packaged as a skill (`SKILL.md`) |
-| `apple-photos-cleaner` | Photos library audit/cleanup via its SQLite DB — packaged as a skill (`SKILL.md`) |
+| `apple-music-dj` ✓ | Apple Music curation engine — packaged as a skill (`SKILL.md`) |
+| `apple-photos-cleaner` ✓ | Photos library audit/cleanup via its SQLite DB — packaged as a skill (`SKILL.md`) |
 | `dbt` | Data science/analytics workspace — Python analysis + dbt transforms + notebooks |
 | `birds` ✓ | fugleramme — e-ink bird frame for Raspberry Pi, real-time bird detection by audio (pyproject.toml) |
 | `minecraft` ✓ | Minecraft server setup/control for Raspberry Pi 5, Docker-based |
 | `vac` | Connecting to a robotic vacuum without cloud services — mixed Python backend + npm mobile-app |
-| `network` | NetworkMonitor — UniFi API integration for network monitoring; Python backend + `workers/` (Cloudflare Workers) |
+| `network` ✓ | NetworkMonitor — UniFi API integration for network monitoring; Python backend + `workers/` (Cloudflare Workers) |
 
 ## iOS / macOS (Xcode)
 
