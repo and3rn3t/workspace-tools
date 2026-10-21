@@ -1,10 +1,11 @@
 [
   {
     "date": "2026-10-21",
-    "consistency": 95,
-    "active_consistency": 92,
-    "active_presentation": 82,
+    "consistency": 96,
+    "active_consistency": 93,
+    "active_presentation": 77,
     "failing_workflows_active": 11,
+    "ci_pass_rate_7d_active": 88,
     "pending_changes": 0,
     "active": 13
   }

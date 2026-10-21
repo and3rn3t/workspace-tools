@@ -1,0 +1,299 @@
+[
+  {
+    "date": "2026-10-21",
+    "repo": "amiibo",
+    "tier": "dormant",
+    "consistency": 100,
+    "presentation": null,
+    "failing_workflows": 1,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "and3rn3t",
+    "tier": "active",
+    "consistency": 97,
+    "presentation": 56,
+    "failing_workflows": 1,
+    "open_prs_human": 1
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "apple-music-dj",
+    "tier": "active",
+    "consistency": 97,
+    "presentation": 100,
+    "failing_workflows": 0,
+    "open_prs_human": 2
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "apple-photos-cleaner",
+    "tier": "active",
+    "consistency": 100,
+    "presentation": 93,
+    "failing_workflows": 0,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "apple-shortcuts-doctor",
+    "tier": "active",
+    "consistency": 88,
+    "presentation": 73,
+    "failing_workflows": 0,
+    "open_prs_human": 1
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "birds",
+    "tier": "active",
+    "consistency": 34,
+    "presentation": 86,
+    "failing_workflows": 0,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "catastrophe",
+    "tier": "dormant",
+    "consistency": 96,
+    "presentation": null,
+    "failing_workflows": 0,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "cats",
+    "tier": "dormant",
+    "consistency": 97,
+    "presentation": null,
+    "failing_workflows": 1,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "dbt",
+    "tier": "dormant",
+    "consistency": 97,
+    "presentation": null,
+    "failing_workflows": 1,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "docker-playground",
+    "tier": "dormant",
+    "consistency": 97,
+    "presentation": null,
+    "failing_workflows": 0,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "eslint-config",
+    "tier": "active",
+    "consistency": 100,
+    "presentation": 60,
+    "failing_workflows": 1,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "family",
+    "tier": "dormant",
+    "consistency": 97,
+    "presentation": null,
+    "failing_workflows": 0,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "fastlane",
+    "tier": "active",
+    "consistency": 94,
+    "presentation": 56,
+    "failing_workflows": 1,
+    "open_prs_human": 1
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "flipper",
+    "tier": "dormant",
+    "consistency": 100,
+    "presentation": null,
+    "failing_workflows": 2,
+    "open_prs_human": 1
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "guess",
+    "tier": "active",
+    "consistency": 100,
+    "presentation": 88,
+    "failing_workflows": 3,
+    "open_prs_human": 1
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "hack",
+    "tier": "dormant",
+    "consistency": 96,
+    "presentation": null,
+    "failing_workflows": 3,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "health",
+    "tier": "active",
+    "consistency": 100,
+    "presentation": 75,
+    "failing_workflows": 4,
+    "open_prs_human": 1
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "homehub",
+    "tier": "active",
+    "consistency": 100,
+    "presentation": 88,
+    "failing_workflows": 0,
+    "open_prs_human": 1
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "homekit-automator",
+    "tier": "dormant",
+    "consistency": 96,
+    "presentation": null,
+    "failing_workflows": 0,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "huggingface",
+    "tier": "active",
+    "consistency": 97,
+    "presentation": 69,
+    "failing_workflows": 0,
+    "open_prs_human": 1
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "jonah",
+    "tier": "dormant",
+    "consistency": 100,
+    "presentation": null,
+    "failing_workflows": 0,
+    "open_prs_human": 1
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "minecraft",
+    "tier": "active",
+    "consistency": 97,
+    "presentation": 93,
+    "failing_workflows": 0,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "net-traffic",
+    "tier": "active",
+    "consistency": 97,
+    "presentation": 69,
+    "failing_workflows": 1,
+    "open_prs_human": 1
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "network",
+    "tier": "dormant",
+    "consistency": 100,
+    "presentation": null,
+    "failing_workflows": 2,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "Printer",
+    "tier": "dormant",
+    "consistency": 96,
+    "presentation": null,
+    "failing_workflows": 1,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "r-data",
+    "tier": "dormant",
+    "consistency": 100,
+    "presentation": null,
+    "failing_workflows": 1,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "remote",
+    "tier": "dormant",
+    "consistency": 100,
+    "presentation": null,
+    "failing_workflows": 1,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "silas",
+    "tier": "dormant",
+    "consistency": 97,
+    "presentation": null,
+    "failing_workflows": 1,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "sky",
+    "tier": "dormant",
+    "consistency": 100,
+    "presentation": null,
+    "failing_workflows": 0,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "telescope",
+    "tier": "dormant",
+    "consistency": 97,
+    "presentation": null,
+    "failing_workflows": 2,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "test-project",
+    "tier": "dormant",
+    "consistency": 100,
+    "presentation": null,
+    "failing_workflows": 2,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "vac",
+    "tier": "dormant",
+    "consistency": 97,
+    "presentation": null,
+    "failing_workflows": 2,
+    "open_prs_human": 0
+  },
+  {
+    "date": "2026-10-21",
+    "repo": "weather-app",
+    "tier": "dormant",
+    "consistency": 96,
+    "presentation": null,
+    "failing_workflows": 6,
+    "open_prs_human": 0
+  }
+]

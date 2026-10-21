@@ -16,8 +16,8 @@ from the folder root via the top-level `Makefile`.
 | `make changes` | Week-over-week diff against `.consistency-snapshot.json`: **new repos**, newly missing files, new drift, and what got fixed — then re-snapshots. Add `--json` to `sync-configs.mjs` for machine-readable state |
 | `make dashboard` | Regenerate `dashboard.html` — a consistency scorecard across all repos, split into **Active** / **Dormant** tiers, with a **Presentation** score for active repos. Scored from the same manifest as `make sync`/`make drift` (`tools/lib/manifest.mjs`), so its drift count always matches the drift report |
 | `make versions` | Stack matrix: declared major of react, vite, vitest, typescript, tailwind, eslint, wrangler, playwright per repo (all `package.json`s merged, nested apps included), active repos first; majors behind the newest used in the workspace are highlighted. Also shown as the dashboard's (unscored) **Stack** column |
-| `make export` | Refresh GitHub data and write the hosted dashboard's datasets (`.dashboard-data/*.json`) plus today's row in `workspace-history.json` |
-| `make meta` | Refresh `.github-meta.json` (gitignored) from the GitHub API: description, homepage, topics, branch protection, latest run per active workflow on the default branch, latest release. Feeds the dashboard's Presentation score and `make report`'s CI section |
+| `make export` | Refresh GitHub data, then write the hosted dashboard's datasets to `.dashboard-data/` (summary, repos, checks, security, plan, ci, ci_history, versions, history, repo_history + `manifest.json` with hashes) and today's rows in the tracked `workspace-history*.json`. Security counts never go to tracked files — workspace-tools is public |
+| `make meta` | Refresh `.github-meta.json` (gitignored): one GraphQL query per repo (description, homepage, topics, protection, latest *published* release, open PRs by author, open issues) plus paginated Dependabot alerts by severity, and REST for rulesets, per-workflow CI on the default branch, code-scanning and secret-scanning alerts. Feeds presentation scoring, `make plan` and the export |
 | `make new-repo NAME=x TYPE=node\|python` | Scaffold a new sibling repo from the template so it starts 100% consistent |
 | `make lint` / `build` / `test` / `typecheck` / `format` / `audit` | Fan the command out across all repos, auto-detecting the package manager |
 | `make outdated` | Per-repo snapshot of outdated npm/pnpm deps, highlighting major bumps (needs installed deps; Python not included) |
@@ -138,7 +138,7 @@ what a visitor to the GitHub page sees:
 |---|---|
 | README | exists, H1 title, a badge, a screenshot/GIF (non-badge image), a Getting started / Install / Usage heading, a License heading |
 | Docs | `AGENTS.md`, `CLAUDE.md`, `CHANGELOG.md` |
-| GitHub (from `make meta`) | description set, 3+ topics, homepage set (only when the repo has a `wrangler.*` deploy target), default branch protected (classic rule or ruleset), no failing workflow on the default branch, at least one release |
+| GitHub (from `make meta`) | description set, 3+ topics, homepage set (only when the repo has a `wrangler.*` deploy target), default branch protected (classic rule or ruleset), no failing workflow on the default branch, at least one published release (drafts don't count), no open critical/high Dependabot or code-scanning alerts |
 
 GitHub checks are skipped (not failed) without a `.github-meta.json` cache.
 `make changes` records each active repo's failing presentation checks and the
@@ -148,7 +148,7 @@ tier, so the Monday diff reports `+ present` regressions, `- present` fixes and
 Bless a deliberate exception with a `presentation:<key>` line in the repo's
 `.consistency-ignore` (keys: `readme title badges screenshot quickstart
 license-sec agents claude changelog description topics homepage protected
-ci-green release`), e.g. `presentation:screenshot` for a CLI with nothing to show.
+ci-green release security`), e.g. `presentation:screenshot` for a CLI with nothing to show.
 
 ### Other dashboard checks
 

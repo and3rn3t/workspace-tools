@@ -27,20 +27,27 @@ const tierOverride = repo => {
   return tier && tier !== 'auto' ? tier : null;
 };
 
-export function projectCommits(repo, days = ACTIVE_DAYS) {
+// Commit dates (YYYY-MM-DD, newest first) of qualifying human project commits.
+function projectCommitDates(repo, days) {
   const repoPath = join(ROOT, repo);
-  const log = (ref) => spawnSync('git', ['-C', repoPath, 'log', ref, `--since=${days}.days`, '--format=%x00%an <%ae>', '--name-only'], { encoding: 'utf8' });
+  const log = (ref) => spawnSync('git', ['-C', repoPath, 'log', ref, `--since=${days}.days`, '--format=%x00%cs %an <%ae>', '--name-only'], { encoding: 'utf8' });
   // The default branch on origin, not the checked-out branch's upstream: a repo
   // left on a PR branch must not count unmerged PR work as activity.
   let r = log('origin/HEAD');
   if (r.status !== 0) r = log('@{u}');
   if (r.status !== 0) r = log('HEAD');
-  if (r.status !== 0) return 0;
-  return r.stdout.split('\0').slice(1).filter(entry => {
-    const [author, ...files] = entry.split('\n').filter(Boolean);
-    return !BOT.test(author) && files.some(f => !isHousekeeping(f));
-  }).length;
+  if (r.status !== 0) return [];
+  return r.stdout.split('\0').slice(1).flatMap(entry => {
+    const [header, ...files] = entry.split('\n').filter(Boolean);
+    const date = header.slice(0, 10), author = header.slice(11);
+    return !BOT.test(author) && files.some(f => !isHousekeeping(f)) ? [date] : [];
+  });
 }
+
+export const projectCommits = (repo, days = ACTIVE_DAYS) => projectCommitDates(repo, days).length;
+
+// Date of the most recent human project commit on the default branch, or null.
+export const lastProjectCommit = repo => projectCommitDates(repo, 3650)[0] ?? null;
 
 export function tierFor(repo) {
   const forced = tierOverride(repo);

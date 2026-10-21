@@ -52,6 +52,11 @@ export const CHECKS = [
   { key: 'protected',   label: 'Branch protected', group: 'github', remote: true, test: c => c.meta.protected },
   { key: 'ci-green',    label: 'CI green',        group: 'github',  remote: true, test: c => c.meta.workflows ? c.meta.failing.length === 0 : null },
   { key: 'release',     label: 'Release',         group: 'github',  remote: true, test: c => !!c.meta.latestRelease },
+  { key: 'security',    label: 'No critical/high alerts', group: 'github', remote: true, test: c => {
+    const sev = [c.meta.dependabot, c.meta.codeScanning].filter(Boolean);
+    if (!sev.length) return c.meta.dependabot === undefined ? null : true; // older cache without security data
+    return sev.every(s => !(s.critical || s.high));
+  } },
 ];
 
 // Evaluate one repo. Status per check: ok | fail | blessed | na | unknown

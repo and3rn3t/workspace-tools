@@ -23,6 +23,20 @@ export function apiClient(token) {
   };
 }
 
+// GraphQL helper. Throws with GitHub's own message on errors.
+export function graphqlClient(token) {
+  return async function graphql(query, variables = {}) {
+    const res = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables }),
+    });
+    const body = await res.json();
+    if (!res.ok || body.errors?.length) throw new Error([...new Set(body.errors?.map(e => e.message))].join('; ') || `HTTP ${res.status}`);
+    return body.data;
+  };
+}
+
 // "owner/name" for a local clone, from its origin URL (falls back to OWNER/<dir>).
 export function repoSlug(repoPath, dirName) {
   const r = spawnSync('git', ['-C', repoPath, 'remote', 'get-url', 'origin'], { encoding: 'utf8' });
