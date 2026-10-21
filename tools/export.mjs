@@ -15,6 +15,12 @@
 //   versions      key package majors per repo
 //   history       one row per day for the workspace (workspace-history.json, tracked)
 //   repo_history  one row per repo per day (workspace-history-repos.json, tracked)
+//   flaky         workflows that passed and failed on the same commit / flip often (ci-history.mjs)
+//   sites         uptime, link health and Lighthouse per live site (sites.mjs)
+//   site_history  one row per site-check run
+//   deploys       wrangler deploy targets per repo (lib/deploys.mjs)
+//   changes       what moved since the weekly baseline (.dashboard-data/weekly-baseline.json,
+//                 gitignored like everything here — it holds security counts)
 // Also writes manifest.json (dataset → file, sha256) so a refresh uploads only what changed.
 //
 // Uses the GitHub cache (.github-meta.json) — `make export` refreshes it first.
@@ -31,6 +37,7 @@ import { repoVersions, workspaceLatest, behindOf, KEY_PACKAGES } from './lib/ver
 import { computePlan } from './lib/plan.mjs';
 import { loadWorkspace, repoSettings } from './lib/workspace.mjs';
 import { localState } from './lib/localgit.mjs';
+import { repoDeploys } from './lib/deploys.mjs';
 
 const OUT = join(ROOT, '.dashboard-data');
 const HISTORY = join(ROOT, 'workspace-history.json');
@@ -45,11 +52,13 @@ const runJson = (script, args = []) => new Promise(resolve => {
   p.on('close', code => { try { resolve(code === 0 ? JSON.parse(out) : null); } catch { resolve(null); } });
 });
 const runScript = (script) => new Promise(resolve => spawn('node', [join(ROOT, 'tools', script)], { cwd: ROOT, stdio: 'ignore' }).on('close', code => resolve(code === 0)));
-const [renovate, secretsAudit, ciOk] = await Promise.all([
+const [renovate, secretsAudit, ciOk, sitesOk] = await Promise.all([
   runJson('renovate-status.mjs', ['--json']),
   runJson('audit-secrets.mjs', ['--json']),
   runScript('ci-history.mjs'),
+  runScript('sites.mjs'),
 ]);
+const readOut = (name) => { try { return JSON.parse(readFileSync(join(OUT, name), 'utf8')); } catch { return []; } };
 const renovatePending = Object.fromEntries((renovate ?? []).map(r => [r.repo, r.pending]));
 const unsetSecrets = Object.fromEntries((secretsAudit ?? []).map(r => [r.repo, r.missing.length]));
 
@@ -62,6 +71,11 @@ const plan = computePlan(ws, meta);
 const today = new Date().toISOString().slice(0, 10);
 const daysSince = (date) => (date ? Math.floor((Date.now() - new Date(date).getTime()) / 86400000) : null);
 const sev = (s, k) => (s ? (s[k] ?? 0) : null);
+
+const ciHistory = readOut('ci_history.json');
+const ci30 = new Map();
+for (const h of ciHistory) { const c = ci30.get(h.repo) ?? { passed: 0, failed: 0 }; c.passed += h.passed; c.failed += h.failed; ci30.set(h.repo, c); }
+const passRate30 = (repo) => { const c = ci30.get(repo); return c && c.passed + c.failed ? Math.round(c.passed / (c.passed + c.failed) * 100) : null; };
 
 const checks = [];
 const security = [];
@@ -98,6 +112,9 @@ const repos = names.map(name => {
     missing: ev.missing.length,
     drift: ev.drift.length,
     presentation: tier === 'active' ? pres.score : null,
+    ci_pass_rate_30d: passRate30(name),
+    // Health = mean of what's available: consistency, presentation (active only), 30-day CI pass rate.
+    health: (() => { const v = [score, tier === 'active' ? pres.score : null, passRate30(name)].filter(x => x !== null && x !== undefined); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null; })(),
     presentation_todo: tier === 'active' ? pres.checks.filter(c => c.status === 'fail').map(c => c.label).join(', ') : '',
     failing_workflows: m?.failing?.length ?? null,
     security_critical_high: critHigh,
@@ -137,8 +154,6 @@ const planRows = plan.map(c => ({ category: c.category, repo: c.repo, field: c.f
 // The dashboard refuses a file with no rows; an all-blank row stands for "no changes" (the page skips it).
 if (!planRows.length) planRows.push({ category: '', repo: '', field: '', actual: '', desired: '' });
 
-let ciHistory = [];
-try { ciHistory = JSON.parse(readFileSync(join(OUT, 'ci_history.json'), 'utf8')); } catch {}
 
 const active = repos.filter(r => r.tier === 'active' && !r.archived);
 const pct = (rs, have, total) => { const t = rs.reduce((a, r) => a + (total(r) ?? 0), 0); return t ? Math.round(rs.reduce((a, r) => a + (have(r) ?? 0), 0) / t * 100) : null; };
@@ -159,6 +174,8 @@ const summary = {
   failing_workflows_all: ci.length,
   ci_pass_rate_7d_active: pct(ciWeek, h => h.passed, h => h.passed + h.failed),
   security_critical_high_active: sum(active, 'security_critical_high'),
+  flaky_workflows_active: readOut('flaky.json').filter(f => f.repo && activeNames.has(f.repo)).length,
+  sites_down: readOut('sites.json').filter(s => s.repo && s.up_now === false).length,
   security_total_all: sum(repos, 'security_total'),
   waiting_on_you: sum(active, 'open_prs_human') + sum(active, 'open_issues') + sum(active, 'unpushed') + active.filter(r => r.on_default_branch === false).length,
   open_prs_bot: sum(repos, 'open_prs_bot'),
@@ -181,9 +198,42 @@ const upsert = (file, rows, keyOf) => {
   return all;
 };
 const history = upsert(HISTORY, [{ date: today, consistency: summary.consistency, active_consistency: summary.active_consistency, active_presentation: summary.active_presentation, failing_workflows_active: summary.failing_workflows_active, ci_pass_rate_7d_active: summary.ci_pass_rate_7d_active, pending_changes: summary.pending_changes, active: summary.active }], r => r.date);
-const repoHistory = upsert(REPO_HISTORY, repos.filter(r => !r.archived).map(r => ({ date: today, repo: r.repo, tier: r.tier, consistency: r.consistency, presentation: r.presentation, failing_workflows: r.failing_workflows, open_prs_human: r.open_prs_human })), r => `${r.date}|${r.repo}`);
+const repoHistory = upsert(REPO_HISTORY, repos.filter(r => !r.archived).map(r => ({ date: today, repo: r.repo, tier: r.tier, consistency: r.consistency, presentation: r.presentation, health: r.health, failing_workflows: r.failing_workflows, open_prs_human: r.open_prs_human })), r => `${r.date}|${r.repo}`);
 
-const files = { summary: [summary], repos, checks, security, plan: planRows, ci, ci_history: ciHistory, versions: versionRows, history, repo_history: repoHistory };
+// What changed since the weekly baseline. The baseline is replaced once it is a
+// week old, so "changes" always compares against roughly a week ago. Lower is
+// better for counts of problems; higher is better for scores.
+const BASELINE = join(OUT, 'weekly-baseline.json');
+const WATCH = {
+  workspace: [['active_presentation', 'Presentation · active', true], ['active_consistency', 'Consistency · active', true], ['ci_pass_rate_7d_active', 'CI pass rate · 7 days', true], ['security_critical_high_active', 'Critical/high alerts · active', false], ['security_total_all', 'All open alerts', false], ['waiting_on_you', 'Waiting on you', false], ['open_prs_bot', 'Bot PRs', false], ['renovate_pending', 'Renovate backlog', false], ['failing_workflows_active', 'Failing workflows · active', false]],
+  repo: [['health', 'Health', true], ['presentation', 'Presentation', true], ['security_critical_high', 'Critical/high alerts', false], ['failing_workflows', 'Failing workflows', false], ['open_prs_bot', 'Bot PRs', false]],
+};
+let baseline = null;
+try { baseline = JSON.parse(readFileSync(BASELINE, 'utf8')); } catch {}
+const changes = [];
+if (baseline) {
+  const push = (repo, [key, label, higherBetter], before, after) => {
+    if (before === null || before === undefined || after === null || after === undefined || Number(before) === Number(after)) return;
+    const delta = Number(after) - Number(before);
+    changes.push({ repo, metric: key, label, before: Number(before), after: Number(after), delta, better: higherBetter ? delta > 0 : delta < 0, since: baseline.at.slice(0, 10) });
+  };
+  for (const m of WATCH.workspace) push('', m, baseline.summary[m[0]], summary[m[0]]);
+  for (const r of repos) for (const m of WATCH.repo) push(r.repo, m, baseline.repos[r.repo]?.[m[0]], r[m[0]]);
+  changes.sort((a, b) => (a.repo === '' ? -1 : b.repo === '' ? 1 : Math.abs(b.delta) - Math.abs(a.delta)));
+}
+if (!baseline || Date.now() - Date.parse(baseline.at) >= 7 * 86400000) {
+  writeFileSync(BASELINE, JSON.stringify({ at: summary.generated_at, summary, repos: Object.fromEntries(repos.map(r => [r.repo, Object.fromEntries(WATCH.repo.map(([k]) => [k, r[k]]))])) }));
+}
+const sites = readOut('sites.json');
+const deploys = names.flatMap(repoDeploys).map(d => ({ ...d, tier: repos.find(r => r.repo === d.repo)?.tier ?? 'dormant' }));
+// The dashboard refuses empty files; an all-blank row stands for "none".
+const orBlank = (rows, blank) => (rows.length ? rows : [blank]);
+
+const files = {
+  summary: [summary], repos, checks, security, plan: planRows, ci, ci_history: ciHistory, versions: versionRows, history, repo_history: repoHistory,
+  flaky: readOut('flaky.json'), sites, site_history: readOut('site_history.json'), deploys,
+  changes: orBlank(changes, { repo: '', metric: '', label: '', before: null, after: null, delta: 0, better: null, since: baseline?.at?.slice(0, 10) ?? today }),
+};
 const manifest = {};
 for (const [id, rows] of Object.entries(files)) {
   const text = JSON.stringify(rows);
@@ -193,6 +243,6 @@ for (const [id, rows] of Object.entries(files)) {
 writeFileSync(join(OUT, 'manifest.json'), JSON.stringify({ generatedAt: summary.generated_at, datasets: manifest }, null, 2) + '\n');
 
 console.log(`exported ${Object.keys(files).length} datasets → ${OUT} (${repos.length} repos, ${checks.length} open checks, ${security.length} security rows, ${ciHistory.length} CI history rows)`);
-const skipped = [!renovate && 'Renovate backlog', !secretsAudit && 'secrets audit', !ciOk && 'CI history'].filter(Boolean);
+const skipped = [!renovate && 'Renovate backlog', !secretsAudit && 'secrets audit', !ciOk && 'CI history', !sitesOk && 'sites'].filter(Boolean);
 if (skipped.length) console.log(`skipped (no token or API error): ${skipped.join(', ')}`);
 if (!existsSync(join(ROOT, '.github-meta.json'))) console.log('note: no GitHub cache — run make meta for CI/protection/security columns');
