@@ -1,0 +1,73 @@
+# INERT — this file is not run by GitHub Actions from here.
+#
+# It belongs at .github/workflows/tools.yml in the root repo, but in this
+# checkout GitHub.nosync/.github/ is the nested and3rn3t/.github clone, so the
+# root repo can't track anything under that path (git skips it as an embedded
+# repo). Until then `make test-tools` in the weekly task stands in for CI.
+#
+# To enable it once .github/ is no longer the nested clone (e.g. that repo is
+# cloned elsewhere): move this file to .github/workflows/tools.yml, add
+# `!/.github/` to .gitignore, delete this header, and run actionlint.
+#
+# Workspace tooling CI — tests, syntax and workflow lint for tools/*.mjs, plus a
+# structural check of workspace.json. CI has no sibling repo checkouts, so
+# coverage problems ("no local folder" / "not declared") are ignored here;
+# `make plan` catches those locally.
+
+name: Tools
+
+on:
+  push:
+    branches: [main]
+    paths: ['tools/**', 'Makefile', 'workspace.json', '.github/workflows/**']
+  pull_request:
+    paths: ['tools/**', 'Makefile', 'workspace.json', '.github/workflows/**']
+
+permissions: {}
+
+concurrency:
+  group: tools-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Unit tests
+        run: node --test 'tools/test/*.test.mjs'
+      - name: Syntax check every script
+        run: find tools -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Validate workspace.json
+        run: |
+          node --input-type=module -e "
+            import { validateWorkspace } from './tools/lib/workspace.mjs';
+            const problems = validateWorkspace().filter(p => !/declared but no local folder|local repo not declared/.test(p));
+            for (const p of problems) console.error('::error file=workspace.json::' + p);
+            if (problems.length) process.exit(1);
+            console.log('workspace.json OK');
+          "
+
+  actionlint:
+    name: Lint workflow files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run actionlint
+        uses: reviewdog/action-actionlint@48e36f54d8da326b83ab061aee2cc5e01b5ca46f # v1.80.6
+        with:
+          fail_level: error

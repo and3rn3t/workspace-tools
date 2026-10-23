@@ -8,6 +8,7 @@ app (Scheduled → Weekly repo drift → Edit). claude.ai shows them read-only.
 Run the weekly workspace check for Matt's GitHub dev folder. Use the device_bash tool (the user's computer). The folder is the connected "GitHub.nosync" folder at /Users/andernet/Documents/GitHub.nosync, mounted at $HOME/mnt/GitHub.nosync. NOTE: the plain "GitHub" folder is empty; always use GitHub.nosync.
 
 1. cd into $HOME/mnt/GitHub.nosync and run, in this order, capturing output:
+   - `make test-tools` (the tooling's own tests — stands in for CI; without make: `node --test 'tools/test/*.test.mjs'`). If any test fails, send a push notification naming the failing tests and STOP — don't run the rest, since their output can't be trusted.
    - `make meta` (refreshes .github-meta.json from the GitHub API: descriptions, topics, protection, failing workflows, releases)
    - `make changes` (week-over-week diff against .consistency-snapshot.json: NEW REPO, + missing, + drift, + present (presentation regression on an active repo), TIER (a repo changed tier), and the matching "-" fixed lines. It updates the snapshot, so run it exactly ONCE per run.)
    - `make plan` (differences between workspace.json — the source of truth for repo settings — and reality; nothing is applied)
