@@ -100,7 +100,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       let mergedHere = false;
       for (const p of bots.filter(b => b.eligible)) {
         // Fresh re-check right before merging: anything may have changed since the list.
-        const fresh = ghJson(['pr', 'view', String(p.number), '-R', `${OWNER}/${repo}`, '--json', `state,${FIELDS}`]);
+        // GitHub recomputes mergeability lazily after every merge in the repo, so a
+      // sibling PR reads UNKNOWN for a few seconds — wait it out before judging.
+      let fresh;
+      for (let attempt = 0; attempt < 6; attempt++) {
+        fresh = ghJson(['pr', 'view', String(p.number), '-R', `${OWNER}/${repo}`, '--json', `state,${FIELDS}`]);
+        if (fresh.mergeable !== 'UNKNOWN') break;
+        execFileSync('sleep', ['5']);
+      }
         const still = fresh.state === 'OPEN' && BOT.test(fresh.author.login) && !fresh.isDraft && classify(fresh) === 'minor/patch' && checkState(fresh).state === 'green';
         if (!still) { p.action = 'changed — skipped'; continue; }
         if (fresh.mergeable !== 'MERGEABLE') {
