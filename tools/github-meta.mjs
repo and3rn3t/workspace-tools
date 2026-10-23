@@ -46,10 +46,10 @@ async function vulnerabilitySeverities(owner, name) {
   let cursor = null, total = 0;
   do {
     const d = await graphql(`query($owner: String!, $name: String!, $cursor: String) { repository(owner: $owner, name: $name) {
-      vulnerabilityAlerts(states: OPEN, first: 100, after: $cursor) { totalCount pageInfo { hasNextPage endCursor } nodes { securityAdvisory { severity } } } } }`, { owner, name, cursor });
+      vulnerabilityAlerts(states: OPEN, first: 100, after: $cursor) { totalCount pageInfo { hasNextPage endCursor } nodes { createdAt securityAdvisory { severity } } } } }`, { owner, name, cursor });
     const page = d.repository.vulnerabilityAlerts;
     total = page.totalCount;
-    severities.push(...page.nodes.map(a => a.securityAdvisory?.severity));
+    severities.push(...page.nodes.map(a => ({ severity: a.securityAdvisory?.severity, createdAt: a.createdAt })));
     cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
   } while (cursor);
   if (severities.length !== total) throw new Error(`dependabot alerts: got ${severities.length} of ${total}`);
@@ -85,6 +85,9 @@ async function restDetails(slug, branch, classicProtected) {
     codeScanning: Array.isArray(code.data)
       ? { total: code.data.length, ...countBy(code.data, a => CODE_SEVERITY[a.rule?.security_severity_level ?? a.rule?.severity]) }
       : null,
+    codeScanningOpened: Array.isArray(code.data)
+      ? code.data.map(a => ({ severity: CODE_SEVERITY[a.rule?.security_severity_level ?? a.rule?.severity], createdAt: a.created_at }))
+      : [],
     secretScanning: Array.isArray(secrets.data) ? secrets.data.length : null,
   };
 }
@@ -98,7 +101,11 @@ async function fetchRepo(dir) {
   const rest = await restDetails(slug, branch, !!r.defaultBranchRef?.branchProtectionRule);
   const prAuthors = r.pullRequests.nodes.map(p => p.author?.login ?? '');
   // null = alerts not readable (disabled or no permission), so 0 always means checked and clean.
-  const vuln = severities?.map(sev => SEVERITY[sev]) ?? null;
+  const vuln = severities?.map(a => SEVERITY[a.severity]) ?? null;
+  // Age in days of the oldest open critical / high alert (Dependabot + code scanning) — for alert SLAs.
+  const opened = [...(severities ?? []).map(a => ({ severity: SEVERITY[a.severity], createdAt: a.createdAt })), ...rest.codeScanningOpened];
+  const oldest = (sev) => { const ts = opened.filter(a => a.severity === sev && a.createdAt).map(a => Date.parse(a.createdAt)); return ts.length ? Math.floor((Date.now() - Math.min(...ts)) / 86400000) : null; };
+  delete rest.codeScanningOpened;
   return {
     slug,
     description: r.description || '',
@@ -114,6 +121,7 @@ async function fetchRepo(dir) {
     openPrs: { human: prAuthors.filter(a => !BOTS.test(a)).length, bot: prAuthors.filter(a => BOTS.test(a)).length, total: r.pullRequests.totalCount },
     openIssues: r.issues.totalCount,
     dependabot: vuln ? { total: vuln.length, ...countBy(vuln, s => s) } : null,
+    oldestAlertDays: { critical: oldest('critical'), high: oldest('high') },
   };
 }
 

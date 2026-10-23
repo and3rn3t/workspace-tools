@@ -21,7 +21,7 @@ export const GROUPS = {
 };
 const TIERS = new Set(['auto', 'active', 'dormant']);
 const RENOVATE = new Set(['tier', 'disabled', 'dependabot']);
-const REPO_KEYS = new Set(['group', 'summary', 'tier', 'featured', 'archived', 'github', 'protection', 'renovate', 'automerge']);
+const REPO_KEYS = new Set(['group', 'summary', 'tier', 'featured', 'archived', 'github', 'protection', 'renovate', 'automerge', 'budgets']);
 
 let cached;
 export function loadWorkspace() {

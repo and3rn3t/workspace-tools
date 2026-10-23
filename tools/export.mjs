@@ -19,6 +19,8 @@
 //   sites         uptime, link health and Lighthouse per live site (sites.mjs)
 //   site_history  one row per site-check run
 //   deploys       wrangler deploy targets per repo (lib/deploys.mjs)
+//   budgets       active repos over a workspace.json budget (lib/budgets.mjs)
+//   watchdog      events from the last `make watchdog` run (what got worse / recovered)
 //   changes       what moved since the weekly baseline (.dashboard-data/weekly-baseline.json,
 //                 gitignored like everything here — it holds security counts)
 // Also writes manifest.json (dataset → file, sha256) so a refresh uploads only what changed.
@@ -38,6 +40,7 @@ import { computePlan } from './lib/plan.mjs';
 import { loadWorkspace, repoSettings } from './lib/workspace.mjs';
 import { localState } from './lib/localgit.mjs';
 import { repoDeploys } from './lib/deploys.mjs';
+import { evaluateBudgets } from './lib/budgets.mjs';
 
 const OUT = join(ROOT, '.dashboard-data');
 const HISTORY = join(ROOT, 'workspace-history.json');
@@ -119,6 +122,8 @@ const repos = names.map(name => {
     failing_workflows: m?.failing?.length ?? null,
     security_critical_high: critHigh,
     security_total: m ? (m.dependabot?.total ?? 0) + (m.codeScanning?.total ?? 0) + (m.secretScanning ?? 0) : null,
+    oldest_critical_alert_days: m?.oldestAlertDays?.critical ?? null,
+    oldest_high_alert_days: m?.oldestAlertDays?.high ?? null,
     unset_secrets: unsetSecrets[name] ?? 0,
     open_prs_human: m?.openPrs?.human ?? null,
     open_prs_bot: m?.openPrs?.bot ?? null,
@@ -176,6 +181,8 @@ const summary = {
   security_critical_high_active: sum(active, 'security_critical_high'),
   flaky_workflows_active: readOut('flaky.json').filter(f => f.repo && activeNames.has(f.repo)).length,
   sites_down: readOut('sites.json').filter(s => s.repo && s.up_now === false).length,
+  budget_breaches_active: repos.flatMap(r => evaluateBudgets(r, ws)).length,
+  repos_over_budget_active: new Set(repos.flatMap(r => evaluateBudgets(r, ws)).map(b => b.repo)).size,
   security_total_all: sum(repos, 'security_total'),
   waiting_on_you: sum(active, 'open_prs_human') + sum(active, 'open_issues') + sum(active, 'unpushed') + active.filter(r => r.on_default_branch === false).length,
   open_prs_bot: sum(repos, 'open_prs_bot'),
@@ -225,6 +232,7 @@ if (!baseline || Date.now() - Date.parse(baseline.at) >= 7 * 86400000) {
   writeFileSync(BASELINE, JSON.stringify({ at: summary.generated_at, summary, repos: Object.fromEntries(repos.map(r => [r.repo, Object.fromEntries(WATCH.repo.map(([k]) => [k, r[k]]))])) }));
 }
 const sites = readOut('sites.json');
+const budgets = repos.flatMap(r => evaluateBudgets(r, ws)).map(b => ({ ...b, tier: 'active' }));
 const deploys = names.flatMap(repoDeploys).map(d => ({ ...d, tier: repos.find(r => r.repo === d.repo)?.tier ?? 'dormant' }));
 // The dashboard refuses empty files; an all-blank row stands for "none".
 const orBlank = (rows, blank) => (rows.length ? rows : [blank]);
@@ -232,6 +240,8 @@ const orBlank = (rows, blank) => (rows.length ? rows : [blank]);
 const files = {
   summary: [summary], repos, checks, security, plan: planRows, ci, ci_history: ciHistory, versions: versionRows, history, repo_history: repoHistory,
   flaky: readOut('flaky.json'), sites, site_history: readOut('site_history.json'), deploys,
+  watchdog: readOut('watchdog.json').length ? readOut('watchdog.json') : [{ kind: '', severity: '', repo: '', text: '', url: null, at: null }],
+  budgets: orBlank(budgets, { repo: '', budget: '', label: '', limit: null, actual: null, over: null, unit: '', tier: '' }),
   changes: orBlank(changes, { repo: '', metric: '', label: '', before: null, after: null, delta: 0, better: null, since: baseline?.at?.slice(0, 10) ?? today }),
 };
 const manifest = {};

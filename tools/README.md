@@ -19,6 +19,8 @@ from the folder root via the top-level `Makefile`.
 | `make export` | Refresh GitHub data, then write the hosted dashboard's datasets to `.dashboard-data/` (summary, repos, checks, security, plan, ci, ci_history, flaky, sites, site_history, deploys, changes, versions, history, repo_history + `manifest.json` with hashes; `changes` compares against a weekly baseline kept there) and today's rows in the tracked `workspace-history*.json`. Security counts never go to tracked files — workspace-tools is public |
 | `make merge-green` / `merge-green-apply` | Bot-PR autopilot for active repos: classify every open Renovate/Dependabot PR (majors read from the PR body, so grouped Dependabot PRs can't hide a vitest 3→5), then merge only green patch/minor ones after a fresh re-check — normal squash merges, never `--admin`. In repos that require up-to-date branches, remaining Dependabot PRs get `@dependabot rebase` and merge on the next run. Opt a repo out with `"automerge": false` in `workspace.json` |
 | `make sites` | Live sites with a daily site check: 30-day uptime and link health, latest Lighthouse scores (when the reusable workflow uploads them). Also exported as the dashboard's Sites tab, with the wrangler deploy inventory |
+| `make watchdog` | Refresh + export, then compare with the previous run (`.dashboard-data/watchdog-state.json`) and print only what got worse — a site down, new critical alerts, a workflow red 24h+, a newly flaky workflow, a newly breached budget — plus recoveries; `quiet` when nothing changed. Meant for a daily scheduled task that notifies only when the output isn't `quiet` |
+| `make tidy` / `tidy-apply` | Local hygiene across every clone: back to the default branch once a PR is merged/closed, fast-forward the default branch, delete fully-merged local branches, prune stale worktrees (only in clones without uncommitted changes; nothing pushed), then clear empty stale locks. Also nudges releases when a release-drafter draft has waited 30+ days |
 | `make meta` | Refresh `.github-meta.json` (gitignored): one GraphQL query per repo (description, homepage, topics, protection, latest *published* release, open PRs by author, open issues) plus paginated Dependabot alerts by severity, and REST for rulesets, per-workflow CI on the default branch, code-scanning and secret-scanning alerts. Feeds presentation scoring, `make plan` and the export |
 | `make new-repo NAME=x TYPE=node\|python` | Scaffold a new sibling repo from the template so it starts 100% consistent |
 | `make lint` / `build` / `test` / `typecheck` / `format` / `audit` | Fan the command out across all repos, auto-detecting the package manager |
@@ -123,6 +125,14 @@ written by `make export` (`tools/export.mjs` → `.dashboard-data/`, gitignored)
 and uploaded to the page by Claude; `workspace-history.json` (tracked) keeps one
 row per export day for the trend. Refresh: `make export`, then ask Claude to
 upload the six files to the dashboard (the Monday task does this).
+
+## Budgets
+
+`workspace.json` `defaults.budgets` sets health targets for **active** repos —
+`presentation_min`, `consistency_min`, `ci_pass_rate_30d_min` (%), and
+`critical_alert_max_days` / `high_alert_max_days` (age of the oldest open alert).
+Override per repo with `"budgets": {…}`; `null` turns one off. Breaches are
+exported as the dashboard's `budgets` dataset, and a *new* breach is a watchdog event.
 
 ## Activity tiers & presentation score
 
