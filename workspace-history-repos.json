@@ -357,7 +357,7 @@
     "presentation": 100,
     "health": 99,
     "failing_workflows": 0,
-    "open_prs_human": 2
+    "open_prs_human": 0
   },
   {
     "date": "2026-10-23",
@@ -457,7 +457,7 @@
     "presentation": 56,
     "health": 78,
     "failing_workflows": 1,
-    "open_prs_human": 1
+    "open_prs_human": 2
   },
   {
     "date": "2026-10-23",
@@ -477,7 +477,7 @@
     "presentation": 88,
     "health": 92,
     "failing_workflows": 3,
-    "open_prs_human": 1
+    "open_prs_human": 2
   },
   {
     "date": "2026-10-23",
@@ -525,9 +525,9 @@
     "tier": "active",
     "consistency": 97,
     "presentation": 69,
-    "health": 81,
+    "health": 82,
     "failing_workflows": 0,
-    "open_prs_human": 0
+    "open_prs_human": 1
   },
   {
     "date": "2026-10-23",
