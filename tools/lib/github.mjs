@@ -19,7 +19,8 @@ export function apiClient(token) {
     const res = await fetch(`https://api.github.com${path}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
     });
-    return { status: res.status, data: res.ok ? await res.json() : null };
+    // 204 (e.g. GET /vulnerability-alerts when enabled) has no body.
+    return { status: res.status, data: !res.ok ? null : res.status === 204 ? {} : await res.json() };
   };
 }
 

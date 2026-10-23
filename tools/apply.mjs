@@ -9,6 +9,7 @@
 // What each category does:
 //   github      gh repo edit (description, homepage, add/remove topics)
 //   protection  PUT the named protection policy; `none` DELETEs protection
+//   security    PUT/DELETE Dependabot alerts (vulnerability-alerts) and security updates (automated-security-fixes)
 //   renovate    swaps the and3rn3t preset in renovate.json (left uncommitted)
 //   archive     gh repo archive / unarchive
 //   index       rewrites the project-index block of the root CLAUDE.md (left uncommitted)
@@ -57,6 +58,10 @@ const APPLY = {
     const path = `repos/${OWNER}/${c.repo}/branches/main/protection`;
     if (c.desired === 'none') return run('gh', ['api', '-X', 'DELETE', path]);
     return run('gh', ['api', '-X', 'PUT', path, '--input', '-'], JSON.stringify(ws.policies.protection[c.desired]));
+  },
+  security(c) {
+    const path = `repos/${OWNER}/${c.repo}/${c.field === 'alerts' ? 'vulnerability-alerts' : 'automated-security-fixes'}`;
+    return run('gh', ['api', '-X', c.desired === 'on' ? 'PUT' : 'DELETE', path]);
   },
   renovate(c) {
     if (!c.actual.startsWith('github>') || !c.desired.startsWith('github>')) return { ok: false, err: `switching ${c.actual} → ${c.desired} is a manual change (enable/disable Renovate or Dependabot by hand)` };

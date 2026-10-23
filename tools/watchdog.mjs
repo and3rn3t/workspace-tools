@@ -13,6 +13,8 @@
 //   red-24h          a workflow on an active repo's default branch has been failing 24h+
 //   new-flaky        a workflow newly flagged flaky
 //   budget-breach    an active repo newly over a workspace.json budget
+//   alert-sla        weekly reminder while an active repo's oldest critical/high
+//                    alert stays past its SLA (the first breach is a budget-breach)
 // plus recoveries (site back up, workflow green again, budget back in line) as
 // good news. Nothing new → prints "quiet" and exits 0, so a scheduled task can
 // notify only when the output isn't "quiet". Events are also written to
@@ -22,6 +24,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './lib/manifest.mjs';
 import { loadMeta } from './lib/presentation.mjs';
+import { budgetsFor } from './lib/budgets.mjs';
 
 const OUT = join(ROOT, '.dashboard-data');
 const STATE = join(OUT, 'watchdog-state.json');
@@ -29,6 +32,7 @@ const args = process.argv.slice(2);
 const JSON_OUT = args.includes('--json');
 const DRY = args.includes('--dry');
 const DAY = 86400000;
+const SLA_REMINDER_DAYS = 7;
 const now = Date.now();
 
 const read = (name, fallback) => { try { return JSON.parse(readFileSync(join(OUT, name), 'utf8')); } catch { return fallback; } };
@@ -49,7 +53,17 @@ const next = {
   failing: {},
   flaky: flaky.map(f => `${f.repo}|${f.workflow}`),
   budgets: budgets.map(b => `${b.repo}|${b.budget}`),
+  sla: {},
 };
+// Alerts past their SLA (workspace.json budgets: critical_alert_max_days / high_alert_max_days).
+for (const [repo, m] of Object.entries(meta.repos)) {
+  if (!active.has(repo) || m.error) continue;
+  const limits = budgetsFor(repo);
+  const over = [['critical', limits.critical_alert_max_days], ['high', limits.high_alert_max_days]]
+    .filter(([sev, max]) => max !== null && max !== undefined && (m.oldestAlertDays?.[sev] ?? 0) > max)
+    .map(([sev, max]) => ({ sev, days: m.oldestAlertDays[sev], max }));
+  if (over.length) next.sla[repo] = { over, lastReminder: prev?.sla?.[repo]?.lastReminder ?? new Date(now).toISOString() };
+}
 for (const [repo, m] of Object.entries(meta.repos)) {
   if (!active.has(repo) || m.error) continue;
   for (const f of m.failing ?? []) {
@@ -81,6 +95,11 @@ if (prev) {
   }
   for (const key of next.flaky) if (!(prev.flaky ?? []).includes(key)) { const [repo, wf] = key.split('|'); add('new-flaky', 'warn', repo, `${wf} newly flagged flaky`); }
   for (const key of next.budgets) if (!(prev.budgets ?? []).includes(key)) { const b = budgets.find(x => `${x.repo}|${x.budget}` === key); add('budget-breach', 'warn', b.repo, `${b.label} ${b.actual}${b.unit === '%' ? '%' : ` ${b.unit}`} is over budget (limit ${b.limit}${b.unit === '%' ? '%' : ` ${b.unit}`})`); }
+  for (const [repo, s] of Object.entries(next.sla)) {
+    if (!prev.sla?.[repo] || now - Date.parse(s.lastReminder) < SLA_REMINDER_DAYS * DAY) continue;
+    add('alert-sla', 'warn', repo, `security SLA still breached: ${s.over.map(o => `oldest ${o.sev} ${o.days} days (limit ${o.max})`).join(', ')} — make security-fix REPO=${repo}`, `https://github.com/and3rn3t/${repo}/security/dependabot`);
+    s.lastReminder = new Date(now).toISOString();
+  }
   for (const key of prev.budgets ?? []) if (!next.budgets.includes(key)) { const [repo, budget] = key.split('|'); add('budget-ok', 'good', repo, `back within the ${budget.replace(/_/g, ' ')} budget`); }
 }
 

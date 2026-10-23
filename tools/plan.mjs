@@ -29,7 +29,7 @@ if (problems.length) {
   console.log('');
 }
 
-const LABEL = { github: 'GitHub metadata', protection: 'Branch protection', renovate: 'Renovate', archive: 'Archive state', index: 'CLAUDE.md index' };
+const LABEL = { github: 'GitHub metadata', protection: 'Branch protection', security: 'Dependabot alerts + security updates', renovate: 'Renovate', archive: 'Archive state', index: 'CLAUDE.md index' };
 const show = v => (v === '' || v === undefined ? `${C.dim}(empty)${C.reset}` : String(v));
 for (const cat of CATEGORIES) {
   const rows = changes.filter(c => c.category === cat);

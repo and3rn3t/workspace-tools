@@ -21,7 +21,7 @@ NODE := node
 REPO ?=
 REPOFLAG := $(if $(REPO),--repo=$(REPO),)
 
-.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard plan apply export workspace-init meta versions merge-green merge-green-apply sites watchdog tidy tidy-apply test-tools new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
+.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard plan apply export workspace-init meta versions merge-green merge-green-apply security-fix security-fix-apply sites watchdog tidy tidy-apply test-tools new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
 
 help:
 	@echo "Meta-workspace targets:"
@@ -51,6 +51,8 @@ help:
 	@echo "  make export                refresh GitHub data and write the hosted dashboard datasets (.dashboard-data/, workspace-history.json)"
 	@echo "  make merge-green           dry run: classify open bot PRs in active repos (green patch/minor vs major/failing)"
 	@echo "  make merge-green-apply     squash-merge the green patch/minor bot PRs (re-checked, never --admin)"
+	@echo "  make security-fix          dry run: active repos' high+ npm alerts by what fixes them (lockfile refresh / bump / none)"
+	@echo "  make security-fix-apply REPO=x   lockfile-refresh PR for x's transitive alerts (checks must pass first)"
 	@echo "  make sites                 live-site uptime, link health and Lighthouse per site-check caller"
 	@echo "  make watchdog              refresh + export, then print only what got worse since the last run (or \"quiet\")"
 	@echo "  make tidy                  dry run: local hygiene (merged PR branches, behind main, merged branches, stale worktrees) + release nudges"
@@ -107,6 +109,13 @@ merge-green:
 
 merge-green-apply:
 	@$(NODE) tools/merge-green.mjs --apply $(REPOFLAG)
+
+security-fix:
+	@$(NODE) tools/security-fix.mjs $(REPOFLAG)
+
+security-fix-apply:
+	@test -n "$(REPO)" || { echo "usage: make security-fix-apply REPO=<name>"; exit 1; }
+	@$(NODE) tools/security-fix.mjs --apply $(REPOFLAG)
 
 sites:
 	@$(NODE) tools/sites.mjs --print

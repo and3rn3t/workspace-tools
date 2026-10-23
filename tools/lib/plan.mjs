@@ -10,7 +10,7 @@ import { loadMeta } from './presentation.mjs';
 import { GROUPS, loadWorkspace, repoSettings } from './workspace.mjs';
 
 export const FEATURED_TOPIC = 'featured';
-export const CATEGORIES = ['github', 'protection', 'renovate', 'archive', 'index'];
+export const CATEGORIES = ['github', 'protection', 'security', 'renovate', 'archive', 'index'];
 
 const sameSet = (a, b) => a.length === b.length && a.every(x => b.includes(x));
 
@@ -75,6 +75,11 @@ export function computePlan(ws = loadWorkspace(), meta = loadMeta()) {
       if (!sameSet(want, have)) push('github', repo, 'topics', have.join(' '), want.join(' '), { add: want.filter(t => !have.includes(t)), remove: have.filter(t => !want.includes(t)) });
       const wantProtected = s.protection !== 'none';
       if (wantProtected !== m.protected) push('protection', repo, 'protection', m.protected ? 'protected' : 'none', s.protection);
+      // Security updates need alerts on, so alerts come first in the list (and in apply).
+      for (const field of ['alerts', 'updates']) {
+        const have = m.security?.[field];
+        if (have !== null && have !== undefined && have !== s.security[field]) push('security', repo, field, have ? 'on' : 'off', s.security[field] ? 'on' : 'off');
+      }
     }
 
     if (existsSync(join(ROOT, repo, 'renovate.json'))) {

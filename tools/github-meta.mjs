@@ -64,12 +64,14 @@ const SEVERITY = { CRITICAL: 'critical', HIGH: 'high', MODERATE: 'medium', MEDIU
 const CODE_SEVERITY = { critical: 'critical', high: 'high', medium: 'medium', low: 'low', error: 'high', warning: 'medium', note: 'low' };
 
 async function restDetails(slug, branch, classicProtected) {
-  const [rules, workflows, runs, code, secrets] = await Promise.all([
+  const [rules, workflows, runs, code, secrets, alerts, fixes] = await Promise.all([
     classicProtected ? Promise.resolve(null) : api(`/repos/${slug}/rules/branches/${branch}`),
     api(`/repos/${slug}/actions/workflows?per_page=100`),
     api(`/repos/${slug}/actions/runs?branch=${branch}&status=completed&per_page=100`),
     api(`/repos/${slug}/code-scanning/alerts?state=open&per_page=100`),
     api(`/repos/${slug}/secret-scanning/alerts?state=open&per_page=100`),
+    api(`/repos/${slug}/vulnerability-alerts`),
+    api(`/repos/${slug}/automated-security-fixes`),
   ]);
   // Latest completed run per still-active workflow (deleted or disabled
   // workflows don't count against the repo); the API returns newest first.
@@ -89,6 +91,11 @@ async function restDetails(slug, branch, classicProtected) {
       ? code.data.map(a => ({ severity: CODE_SEVERITY[a.rule?.security_severity_level ?? a.rule?.severity], createdAt: a.created_at }))
       : [],
     secretScanning: Array.isArray(secrets.data) ? secrets.data.length : null,
+    // Dependabot settings for the `security` plan category; null = not readable.
+    security: {
+      alerts: alerts.status === 204 ? true : alerts.status === 404 ? false : null,
+      updates: fixes.data ? fixes.data.enabled === true : fixes.status === 404 ? false : null,
+    },
   };
 }
 

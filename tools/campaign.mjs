@@ -33,14 +33,13 @@
 // first. A bot PR is reaped when it bumps a major of a campaign's package (or its
 // lockstep companions) and that campaign's PR is open or merged in that repo, or when its checks fail and it is 30+ days old.
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { spawnSync } from 'node:child_process';
 import { ROOT, detectTypes, listRepos } from './lib/manifest.mjs';
 import { tierFor } from './lib/activity.mjs';
 import { repoSettings } from './lib/workspace.mjs';
 import { repoSlug } from './lib/github.mjs';
+import { run, git, ok, must, worktreeDir, stripAnsi, pmFor, defaultRef, runChecks, printFailures } from './lib/repo-checks.mjs';
 
 const args = process.argv.slice(2);
 const flag = name => args.includes(`--${name}`);
@@ -70,22 +69,12 @@ const BOT = /renovate|dependabot/i;
 const DEP_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies'];
 const OK_CHECK = new Set(['SUCCESS', 'NEUTRAL', 'SKIPPED']);
 
-const run = (cmd, argv, opts = {}) => spawnSync(cmd, argv, { encoding: 'utf8', maxBuffer: 256 << 20, ...opts });
-const git = (repoPath, argv, opts) => run('git', ['-C', repoPath, ...argv], opts);
-const ok = r => (r.status === 0 ? r.stdout : null);
-const must = (r, what) => { if (r.status !== 0) throw new Error(`${what} failed: ${(r.stderr || r.stdout || r.error?.message || '').trim()}`); return r.stdout; };
 const ghJson = argv => JSON.parse(must(run('gh', argv), `gh ${argv.slice(0, 2).join(' ')}`));
-const stripAnsi = s => s.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
 const majorOf = spec => { const m = String(spec).match(/(?:^|[\s^~>=<v])(\d+)(?:\.|$|\s)/); return m ? Number(m[1]) : null; };
 const slugOf = pkg => pkg.replace(/^@/, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
 const branchFor = (pkg, to) => `chore/campaign-${slugOf(pkg)}-${to}`;
 
 // ── reading a repo at origin/<default> ──────────────────────────────────────
-function defaultRef(repoPath) {
-  const ref = ok(git(repoPath, ['rev-parse', '--abbrev-ref', 'origin/HEAD']))?.trim() || 'origin/main';
-  return { ref, branch: ref.replace(/^origin\//, '') };
-}
-
 function packageJsonsAt(repoPath, ref) {
   const files = (ok(git(repoPath, ['ls-tree', '-r', '-z', '--name-only', ref])) ?? '').split('\0');
   return files.filter(f => /(^|\/)package\.json$/.test(f) && f.split('/').length <= 4 && !/(^|\/)(node_modules|dist)\//.test(f))
@@ -228,8 +217,6 @@ function bumpManifests(wt, deps) {
   return { changes, skipped: [...new Set(skipped)] };
 }
 
-const pmFor = wt => (existsSync(join(wt, 'pnpm-lock.yaml')) ? 'pnpm' : 'npm');
-
 function install(wt, deps) {
   const pm = pmFor(wt);
   const dirs = new Set(['.', ...deps.map(d => dirname(d.file)).filter(d => existsSync(join(wt, d, pm === 'pnpm' ? 'pnpm-lock.yaml' : 'package-lock.json')))]);
@@ -240,28 +227,6 @@ function install(wt, deps) {
     if (r.status !== 0) return { ok: false, output: stripAnsi(`${r.stdout}\n${r.stderr}`) };
   }
   return { ok: true };
-}
-
-// The repo's own checks: lint, type-check, then tests (run mode, not watch).
-function runChecks(wt) {
-  const pm = pmFor(wt);
-  const scripts = JSON.parse(readFileSync(join(wt, 'package.json'), 'utf8')).scripts ?? {};
-  const pick = (...names) => names.find(n => scripts[n]);
-  const plan = [['lint', pick('lint')], ['type-check', pick('type-check', 'typecheck')], ['test', pick('test:run', 'test:unit', 'test')]];
-  const results = [];
-  for (const [label, script] of plan) {
-    if (!script) { results.push({ label, script: null, ok: true, skipped: true }); continue; }
-    process.stdout.write(`  ${C.dim}${pm} run ${script}${C.reset} … `);
-    const started = Date.now();
-    const extra = script === 'test' && /^vitest(\s|$)/.test(scripts.test) && !/\brun\b/.test(scripts.test) ? ['--', '--run'] : [];
-    const r = run(pm, ['run', script, ...extra], { cwd: wt, env: { ...process.env, CI: '1', FORCE_COLOR: '0' }, timeout: 20 * 60_000 });
-    const output = stripAnsi(`${r.stdout}\n${r.stderr}`);
-    const summary = output.split('\n').filter(l => /^\s*(Test Files|Tests)\s+\d/.test(l)).map(l => l.trim()).join(' · ');
-    const res = { label, script, ok: r.status === 0, seconds: Math.round((Date.now() - started) / 1000), summary, output };
-    console.log(res.ok ? `${C.green}pass${C.reset} ${C.dim}${res.seconds}s ${summary}${C.reset}` : `${C.red}FAIL${C.reset}`);
-    results.push(res);
-  }
-  return results;
 }
 
 function prBody(row, bump, results, migrated) {
@@ -296,7 +261,7 @@ function applyRepo(row) {
   if (ok(git(repoPath, ['ls-remote', '--heads', 'origin', row.branch]))?.trim()) throw new Error(`origin already has ${row.branch} — delete it or open the PR by hand`);
   let bump, keepIt = KEEP;
   if (!CONTINUE) {
-    wt = mkdtempSync(join(tmpdir(), `campaign-${row.repo}-`));
+    wt = worktreeDir(`campaign-${row.repo}`);
     must(git(repoPath, ['worktree', 'add', '--quiet', '-B', row.branch, wt, `origin/${row.defaultBranch}`]), 'git worktree add');
     console.log(`  worktree ${wt} (${row.branch} from origin/${row.defaultBranch})`);
     bump = bumpManifests(wt, row.deps);
@@ -317,10 +282,7 @@ function applyRepo(row) {
     else results = runChecks(wt);
     const failed = results.filter(r => !r.ok);
     if (failed.length) {
-      for (const f of failed) {
-        const tail = f.output.split('\n').filter(l => /FAIL|Error|error|✗|×|failed|ERR!/.test(l)).slice(0, 40);
-        console.log(`\n${C.red}── ${f.script} failed ──${C.reset}\n${(tail.length ? tail : f.output.split('\n').slice(-40)).join('\n')}`);
-      }
+      printFailures(failed);
       saveStatus([{ repo: row.repo, pkg: PKG, from: row.from, to: TO, state: 'failed', pr: null, failures: failed.map(f => f.script), worktree: keepIt ? wt : null }]);
       console.log(`\n${C.red}${row.repo}: not pushed${C.reset} — ${failed.map(f => f.script).join(', ')} failed.${keepIt ? ` Migrate in ${wt}, then --continue.` : ' Re-run with --keep to migrate in place.'}`);
       return;

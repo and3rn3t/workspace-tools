@@ -10,6 +10,10 @@
       "ci_pass_rate_30d_min": 90,
       "critical_alert_max_days": 7,
       "high_alert_max_days": 30
+    },
+    "security": {
+      "alerts": true,
+      "updates": true
     }
   },
   "policies": {

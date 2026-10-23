@@ -2,7 +2,7 @@
 //
 // Holds what *should* be true for every repo (group, summary, tier override,
 // featured flag, GitHub description/homepage/topics, branch-protection policy,
-// Renovate mode). `make plan` diffs it against reality; `make apply` converges.
+// Renovate mode, Dependabot alerts + security updates). `make plan` diffs it against reality; `make apply` converges.
 // Facts that can be derived (stack, deploy target, CLAUDE.md presence) are not
 // stored here — they're read from the repos.
 
@@ -21,7 +21,8 @@ export const GROUPS = {
 };
 const TIERS = new Set(['auto', 'active', 'dormant']);
 const RENOVATE = new Set(['tier', 'disabled', 'dependabot']);
-const REPO_KEYS = new Set(['group', 'summary', 'tier', 'featured', 'archived', 'github', 'protection', 'renovate', 'automerge', 'budgets']);
+const REPO_KEYS = new Set(['group', 'summary', 'tier', 'featured', 'archived', 'github', 'protection', 'renovate', 'automerge', 'budgets', 'security']);
+export const DEFAULT_SECURITY = { alerts: true, updates: true };
 
 let cached;
 export function loadWorkspace() {
@@ -39,6 +40,7 @@ export function repoSettings(repo, ws = loadWorkspace()) {
     tier: 'auto', featured: false, archived: false, protection: d.protection ?? 'standard', renovate: d.renovate ?? 'tier',
     ...own,
     github: { description: '', homepage: '', topics: [], ...own.github },
+    security: { ...DEFAULT_SECURITY, ...d.security, ...own.security },
   };
 }
 
@@ -53,6 +55,7 @@ export function validateWorkspace(ws = loadWorkspace()) {
     if (r.tier && !TIERS.has(r.tier)) problems.push(`${name}: tier must be auto, active or dormant`);
     if (r.renovate && !RENOVATE.has(r.renovate)) problems.push(`${name}: renovate must be tier, disabled or dependabot`);
     if (r.protection && !ws.policies?.protection?.[r.protection] && r.protection !== 'none') problems.push(`${name}: unknown protection policy "${r.protection}"`);
+    for (const [k, v] of Object.entries(r.security ?? {})) if (!(k in DEFAULT_SECURITY) || typeof v !== 'boolean') problems.push(`${name}: security.${k} must be one of ${Object.keys(DEFAULT_SECURITY).join(', ')} with a true/false value`);
     if (!local.has(name) && !['.github', 'tools', 'ai-template-repo'].includes(name)) problems.push(`${name}: declared but no local folder`);
   }
   for (const name of local) if (!ws.repos?.[name]) problems.push(`${name}: local repo not declared in workspace.json (add an entry)`);
