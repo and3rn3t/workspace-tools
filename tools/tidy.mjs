@@ -72,7 +72,10 @@ for (const repo of listRepos(onlyRepo)) {
   }
   // delete local branches already merged into origin's default
   const merged = (git(repo, ['branch', '--format=%(refname:short)', '--merged', defRef]) ?? '').split('\n').filter(b => b && b !== def && b !== (APPLY ? git(repo, ['rev-parse', '--abbrev-ref', 'HEAD']) : branch));
-  for (const b of merged) { actions.push({ kind: 'delete-merged', text: `branch ${b}` }); if (APPLY) git(repo, ['branch', '-d', '-q', b]); }
+  // -D, not -d: `git branch -d` checks against the checked-out branch, so it refuses
+  // a branch merged into origin's default while a PR branch is checked out. The
+  // --merged filter above already proved each one is in origin's default branch.
+  for (const b of merged) { actions.push({ kind: 'delete-merged', text: `branch ${b}` }); if (APPLY) git(repo, ['branch', '-D', '-q', b]); }
   // prune stale worktrees
   const worktrees = (git(repo, ['worktree', 'list', '--porcelain']) ?? '').split('\n').filter(l => l.startsWith('prunable')).length;
   if (worktrees) { actions.push({ kind: 'prune', text: `${worktrees} stale worktree(s)` }); if (APPLY) git(repo, ['worktree', 'prune']); }
