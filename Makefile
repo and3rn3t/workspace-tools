@@ -21,7 +21,7 @@ NODE := node
 REPO ?=
 REPOFLAG := $(if $(REPO),--repo=$(REPO),)
 
-.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard plan apply export workspace-init meta versions merge-green merge-green-apply sites watchdog tidy tidy-apply new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
+.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard plan apply export workspace-init meta versions merge-green merge-green-apply sites watchdog tidy tidy-apply test-tools new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
 
 help:
 	@echo "Meta-workspace targets:"
@@ -55,6 +55,7 @@ help:
 	@echo "  make watchdog              refresh + export, then print only what got worse since the last run (or \"quiet\")"
 	@echo "  make tidy                  dry run: local hygiene (merged PR branches, behind main, merged branches, stale worktrees) + release nudges"
 	@echo "  make tidy-apply            do the local fixes (no pushes) and clear empty stale git locks"
+	@echo "  make test-tools            run the workspace tooling's own tests (tools/test, node --test)"
 	@echo "  make meta                  refresh .github-meta.json (description, topics, protection, CI, releases) for presentation scoring"
 	@echo "  make report                full morning report (dashboard + git health + secrets + renovate + live CI)"
 	@echo "  make report-quick          same, local-only (no GitHub API calls)"
@@ -118,6 +119,10 @@ tidy:
 
 tidy-apply:
 	@$(NODE) tools/tidy.mjs --apply $(REPOFLAG) && $(NODE) tools/git-doctor.mjs --fix $(REPOFLAG)
+
+# Node 24's --test takes globs, not directories — quoted so node expands it.
+test-tools:
+	@$(NODE) --test 'tools/test/*.test.mjs'
 
 meta:
 	@$(NODE) tools/github-meta.mjs $(REPOFLAG)

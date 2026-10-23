@@ -14,7 +14,7 @@
 // Also flags flaky workflows → .dashboard-data/flaky.json: a workflow is flaky
 // when one commit both passed and failed (scheduled runs and re-triggers hit the
 // same SHA — no code changed, the result did), or when it flipped pass↔fail at
-// least FLIP_LIMIT times in the last FLIP_DAYS days. Only default-branch runs are
+// least FLIP_LIMIT times in the last FLIP_DAYS days (tools/lib/flaky.mjs). Only default-branch runs are
 // read, so a test that flakes only on PR branches isn't caught here.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -23,17 +23,13 @@ import { ROOT, listRepos } from './lib/manifest.mjs';
 import { resolveToken, apiClient, repoSlug } from './lib/github.mjs';
 import { loadMeta } from './lib/presentation.mjs';
 import { tierFor } from './lib/activity.mjs';
+import { FLIP_DAYS, flakiness, isFlaky } from './lib/flaky.mjs';
 
 const args = process.argv.slice(2);
 const DAYS = Number((args.find(a => a.startsWith('--days=')) || '--days=30').split('=')[1]);
 const onlyRepo = (args.find(a => a.startsWith('--repo=')) || '').split('=')[1];
 const OUT = join(ROOT, '.dashboard-data', 'ci_history.json');
 const FLAKY_OUT = join(ROOT, '.dashboard-data', 'flaky.json');
-const FLIP_DAYS = 14, FLIP_LIMIT = 3;
-// Workflows whose outcome follows settings rather than code (bot updaters,
-// publishing, releases) aren't test flakiness — a fixed token re-run on the same
-// commit is a fix, not a flake.
-const NOT_TESTS = /dependabot updates|publish|release|deploy|stale|label|drafter/i;
 const FAIL = new Set(['failure', 'timed_out', 'startup_failure']);
 
 const token = resolveToken();
@@ -69,13 +65,8 @@ async function repoHistory(dir) {
   const flipSince = new Date(Date.now() - FLIP_DAYS * 86400000).toISOString();
   for (const [id, runs] of byWorkflow) {
     runs.sort((a, b) => a.at.localeCompare(b.at));
-    const bySha = new Map();
-    for (const r of runs) (bySha.get(r.sha) ?? bySha.set(r.sha, new Set()).get(r.sha)).add(r.ok);
-    const mixedShas = [...bySha.values()].filter(s => s.size === 2).length;
-    const recent = runs.filter(r => r.at >= flipSince);
-    const flips = recent.slice(1).filter((r, i) => r.ok !== recent[i].ok).length;
-    if (NOT_TESTS.test(activeWf.get(id))) continue;
-    if (mixedShas || flips >= FLIP_LIMIT) {
+    const { mixedShas, flips } = flakiness(runs, flipSince);
+    if (isFlaky(activeWf.get(id), { mixedShas, flips })) {
       const lastFail = [...runs].reverse().find(r => !r.ok);
       flaky.push({ repo: dir, tier, workflow: activeWf.get(id), mixed_commits: mixedShas, flips_14d: flips, runs: runs.length, pass_rate: Math.round(runs.filter(r => r.ok).length / runs.length * 100), last_failure: lastFail?.at?.slice(0, 10) ?? null, last_failure_url: lastFail?.url ?? null });
     }
