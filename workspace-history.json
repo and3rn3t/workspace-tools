@@ -18,5 +18,15 @@
     "ci_pass_rate_7d_active": 90,
     "pending_changes": 9,
     "active": 13
+  },
+  {
+    "date": "2026-10-24",
+    "consistency": 96,
+    "active_consistency": 93,
+    "active_presentation": 79,
+    "failing_workflows_active": 12,
+    "ci_pass_rate_7d_active": 91,
+    "pending_changes": 0,
+    "active": 13
   }
 ]
