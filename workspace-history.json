@@ -28,5 +28,25 @@
     "ci_pass_rate_7d_active": 91,
     "pending_changes": 0,
     "active": 13
+  },
+  {
+    "date": "2026-10-25",
+    "consistency": 96,
+    "active_consistency": 93,
+    "active_presentation": 79,
+    "failing_workflows_active": 14,
+    "ci_pass_rate_7d_active": 92,
+    "pending_changes": 0,
+    "active": 13
+  },
+  {
+    "date": "2026-10-26",
+    "consistency": 96,
+    "active_consistency": 93,
+    "active_presentation": 78,
+    "failing_workflows_active": 14,
+    "ci_pass_rate_7d_active": 92,
+    "pending_changes": 0,
+    "active": 13
   }
 ]
