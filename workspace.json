@@ -73,7 +73,8 @@
           "python"
         ]
       },
-      "protection": "standard"
+      "protection": "standard",
+      "archived": true
     },
     "and3rn3t": {
       "group": "web",
@@ -212,7 +213,8 @@
         ]
       },
       "protection": "standard",
-      "renovate": "disabled"
+      "renovate": "disabled",
+      "archived": true
     },
     "eslint-config": {
       "group": "meta",
@@ -246,7 +248,8 @@
           "vite"
         ]
       },
-      "protection": "standard"
+      "protection": "standard",
+      "archived": true
     },
     "fastlane": {
       "group": "web",
@@ -275,7 +278,8 @@
         ]
       },
       "protection": "standard",
-      "renovate": "disabled"
+      "renovate": "disabled",
+      "archived": true
     },
     "guess": {
       "group": "web",
@@ -310,7 +314,8 @@
         ]
       },
       "protection": "standard",
-      "renovate": "dependabot"
+      "renovate": "dependabot",
+      "archived": true
     },
     "health": {
       "group": "web",
@@ -364,7 +369,8 @@
           "xcode"
         ]
       },
-      "protection": "standard"
+      "protection": "standard",
+      "archived": true
     },
     "huggingface": {
       "group": "web",
@@ -384,7 +390,8 @@
         ]
       },
       "protection": "standard",
-      "renovate": "disabled"
+      "renovate": "disabled",
+      "archived": true
     },
     "jonah": {
       "group": "web",
@@ -461,7 +468,8 @@
           "unifi"
         ]
       },
-      "protection": "standard"
+      "protection": "standard",
+      "archived": true
     },
     "posture": {
       "group": "web",
@@ -574,7 +582,8 @@
           "vite"
         ]
       },
-      "protection": "standard"
+      "protection": "standard",
+      "archived": true
     },
     "telescope": {
       "group": "web",
@@ -595,7 +604,8 @@
         ]
       },
       "protection": "standard",
-      "renovate": "disabled"
+      "renovate": "disabled",
+      "archived": true
     },
     "test-project": {
       "group": "meta",
@@ -637,7 +647,8 @@
         ]
       },
       "protection": "standard",
-      "renovate": "disabled"
+      "renovate": "disabled",
+      "archived": true
     },
     "weather-app": {
       "group": "apple",
