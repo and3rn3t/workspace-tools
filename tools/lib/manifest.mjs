@@ -76,6 +76,10 @@ export const MANIFEST = [
   // schema — caught a real bug in reusable-cloudflare-pages-deploy.yml's
   // first draft, so it earns its place as a universal baseline file too.
   { dest: '.github/workflows/actionlint.yml', src: join(GHTPL, 'actionlint.yml'), types: ['all'], drift: true },
+  // Shared Claude Code project settings: read-only git/gh and lint/test/build
+  // commands pre-allowed, .env/.dev.vars reads denied. drift:false — repos add
+  // their own allow rules (deploy scripts, repo-specific tools) on top.
+  { dest: '.claude/settings.json', src: join(TPL, '.claude/settings.json'), types: ['all'], drift: false },
 ];
 
 // Never treated as a sync target.

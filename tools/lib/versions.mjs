@@ -48,3 +48,28 @@ export function workspaceLatest(allVersions) {
 
 // Key packages where the repo's major trails the workspace's newest.
 export const behindOf = (majors, latest) => Object.keys(majors).filter(name => majors[name] < latest[name]);
+
+// Adoption of the shared @and3rn3t/eslint-config package (lint rules, Prettier
+// base, tsconfig) plus the pinned package manager, read from the repo root.
+// Only for repos with a root package.json; null otherwise (and for the shared
+// package's own repo).
+export const SHARED_PACKAGE = '@and3rn3t/eslint-config';
+const PRETTIER_FILES = ['prettier.config.js', 'prettier.config.mjs', 'prettier.config.cjs', '.prettierrc.js', '.prettierrc.mjs', '.prettierrc.cjs'];
+const TSCONFIGS = ['tsconfig.json', 'tsconfig.app.json', 'tsconfig.base.json'];
+
+export function sharedConfigs(repo) {
+  const dir = join(ROOT, repo);
+  const read = file => { try { return readFileSync(join(dir, file), 'utf8'); } catch { return null; } };
+  let pkg;
+  try { pkg = JSON.parse(read('package.json')); } catch { return null; }
+  if (!pkg || pkg.name === SHARED_PACKAGE) return null;
+
+  const usesShared = text => !!text && text.includes(SHARED_PACKAGE);
+  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  return {
+    eslint: SHARED_PACKAGE in deps,
+    prettier: (typeof pkg.prettier === 'string' && usesShared(pkg.prettier)) || PRETTIER_FILES.some(f => usesShared(read(f))),
+    tsconfig: TSCONFIGS.some(f => usesShared(read(f))),
+    packageManager: pkg.packageManager ?? null,
+  };
+}

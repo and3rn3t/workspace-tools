@@ -14,5 +14,8 @@ dashboard.html
 # workspace tooling itself is tracked. Add a `!/<dir>/` line to track another.
 /*/
 !/tools/
+!/.claude/
+/.claude/*
+!/.claude/skills/
 .dashboard-data/
 .worktrees/

@@ -21,7 +21,7 @@ NODE := node
 REPO ?=
 REPOFLAG := $(if $(REPO),--repo=$(REPO),)
 
-.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard plan apply export workspace-init meta versions merge-green merge-green-apply security-fix security-fix-apply release-train release-train-prepare release-train-apply sites watchdog tidy tidy-apply test-tools new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
+.PHONY: help doctor sync sync-apply sync-update sync-update-apply drift changes dashboard plan apply export history-commit workspace-init meta versions merge-green merge-green-apply security-fix security-fix-apply release-train release-train-prepare release-train-apply sites watchdog tidy tidy-apply test-tools new-repo lint build test typecheck format audit outdated status health git-doctor git-doctor-fix renovate-status renovate-tier renovate-tier-apply report report-quick secrets-audit secrets-sync secrets-sync-apply
 
 help:
 	@echo "Meta-workspace targets:"
@@ -49,6 +49,7 @@ help:
 	@echo "  make apply                 converge to workspace.json, asking per category (github/protection/renovate/archive/index)"
 	@echo "  make workspace-init        add workspace.json entries for undeclared repos, seeded from current state"
 	@echo "  make export                refresh GitHub data and write the hosted dashboard datasets (.dashboard-data/, workspace-history.json)"
+	@echo "  make history-commit        commit the export's history rows as one chore(history) commit (only those two files; never pushes)"
 	@echo "  make merge-green           dry run: classify open bot PRs in active repos (green patch/minor vs major/failing)"
 	@echo "  make merge-green-apply     squash-merge the green patch/minor bot PRs (re-checked, never --admin)"
 	@echo "  make security-fix          dry run: active repos' high+ npm alerts by what fixes them (lockfile refresh / bump / none)"
@@ -106,6 +107,9 @@ workspace-init:
 
 export:
 	@$(NODE) tools/github-meta.mjs >/dev/null && $(NODE) tools/export.mjs
+
+history-commit:
+	@$(NODE) tools/history-commit.mjs
 
 merge-green:
 	@$(NODE) tools/merge-green.mjs $(REPOFLAG)
