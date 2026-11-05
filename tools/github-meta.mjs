@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import { ROOT, listRepos } from './lib/manifest.mjs';
 import { resolveToken, apiClient, graphqlClient, repoSlug } from './lib/github.mjs';
 import { META_CACHE, loadMeta } from './lib/presentation.mjs';
+import { repoCiWorkflows } from './lib/workflows.mjs';
 
 const FAILING = new Set(['failure', 'startup_failure', 'timed_out']);
 const BOTS = /renovate|dependabot|github-actions|\[bot\]/i;
@@ -75,7 +76,7 @@ async function restDetails(slug, branch, classicProtected) {
   ]);
   // Latest completed run per still-active workflow (deleted or disabled
   // workflows don't count against the repo); the API returns newest first.
-  const active = new Map((workflows.data?.workflows ?? []).filter(w => w.state === 'active').map(w => [w.id, w.name]));
+  const active = repoCiWorkflows(workflows.data?.workflows ?? []);
   const latest = new Map();
   for (const run of runs.data?.workflow_runs ?? []) if (active.has(run.workflow_id) && !latest.has(run.workflow_id)) latest.set(run.workflow_id, run);
   return {

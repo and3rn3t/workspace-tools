@@ -24,6 +24,7 @@ import { resolveToken, apiClient, repoSlug } from './lib/github.mjs';
 import { loadMeta } from './lib/presentation.mjs';
 import { tierFor } from './lib/activity.mjs';
 import { FLIP_DAYS, flakiness, isFlaky } from './lib/flaky.mjs';
+import { repoCiWorkflows } from './lib/workflows.mjs';
 
 const args = process.argv.slice(2);
 const DAYS = Number((args.find(a => a.startsWith('--days=')) || '--days=30').split('=')[1]);
@@ -44,7 +45,7 @@ async function repoHistory(dir) {
   const slug = repoSlug(join(ROOT, dir), dir);
   const branch = m?.defaultBranch ?? 'main';
   const workflows = await api(`/repos/${slug}/actions/workflows?per_page=100`);
-  const activeWf = new Map((workflows.data?.workflows ?? []).filter(w => w.state === 'active').map(w => [w.id, w.name]));
+  const activeWf = repoCiWorkflows(workflows.data?.workflows ?? []);
   const byDay = new Map();
   const byWorkflow = new Map(); // workflow_id → [{sha, ok, at, url}]
   for (let page = 1; page <= 10; page++) {
