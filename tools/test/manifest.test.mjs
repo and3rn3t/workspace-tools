@@ -2,7 +2,7 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MANIFEST, PYTPL, ROOT, evaluate, detectTypes, typeLabel, ignoredFor } from '../lib/manifest.mjs';
+import { MANIFEST, PYTPL, ROOT, evaluate, detectTypes, typeLabel, ignoredFor, sameContent } from '../lib/manifest.mjs';
 import { fixtureRepo, cleanupFixtures } from './fixtures/repo.mjs';
 
 after(cleanupFixtures);
@@ -10,6 +10,7 @@ after(cleanupFixtures);
 // Only template sources tracked in this repo (tools/templates) — CI has no
 // ai-template-repo / .github checkout, so those entries are miss-src there.
 const CODEQL = readFileSync(join(PYTPL, 'codeql.yml'), 'utf8');
+const PRECOMMIT = readFileSync(join(PYTPL, '.pre-commit-config.yaml'), 'utf8');
 const CODEOWNERS = readFileSync(join(ROOT, 'tools', 'templates', 'CODEOWNERS'), 'utf8');
 const statusOf = (ev, dest) => ev.items.find(i => i.item.dest === dest)?.status;
 
@@ -43,18 +44,18 @@ test('evaluate: ok / missing / vary', () => {
 });
 
 test('evaluate: drift vs blessed via .consistency-ignore', () => {
-  const drifted = fixtureRepo({ 'pyproject.toml': '', '.github/workflows/codeql.yml': CODEQL + '# local tweak\n' });
-  assert.equal(statusOf(evaluate(drifted.name), '.github/workflows/codeql.yml'), 'drift');
-  assert.ok(evaluate(drifted.name).drift.includes('.github/workflows/codeql.yml'));
+  const drifted = fixtureRepo({ 'pyproject.toml': '', '.pre-commit-config.yaml': PRECOMMIT + '# local tweak\n' });
+  assert.equal(statusOf(evaluate(drifted.name), '.pre-commit-config.yaml'), 'drift');
+  assert.ok(evaluate(drifted.name).drift.includes('.pre-commit-config.yaml'));
 
   const blessed = fixtureRepo({
     'pyproject.toml': '',
-    '.github/workflows/codeql.yml': CODEQL + '# local tweak\n',
+    '.pre-commit-config.yaml': PRECOMMIT + '# local tweak\n',
     'renovate.json': '{}',
-    '.consistency-ignore': '.github/workflows/codeql.yml\n.github/CODEOWNERS\nrenovate.json\n',
+    '.consistency-ignore': '.pre-commit-config.yaml\n.github/CODEOWNERS\nrenovate.json\n',
   });
   const ev = evaluate(blessed.name);
-  assert.equal(statusOf(ev, '.github/workflows/codeql.yml'), 'blessed'); // differs + ignored
+  assert.equal(statusOf(ev, '.pre-commit-config.yaml'), 'blessed'); // differs + ignored
   assert.equal(statusOf(ev, '.github/CODEOWNERS'), 'blessed');           // absent + ignored
   assert.equal(statusOf(ev, 'renovate.json'), 'blessed');                // vary + ignored
   assert.ok(!ev.missing.includes('.github/CODEOWNERS'));
@@ -68,4 +69,12 @@ test('evaluate: identical CODEOWNERS is ok; absent template source is miss-src',
   for (const { item, status } of ev.items) if (!existsSync(item.src)) assert.equal(status, 'miss-src', item.dest);
   const applicable = MANIFEST.filter(m => m.types.includes('all') || m.types.includes('python'));
   assert.equal(ev.items.length, applicable.length);
+});
+
+test('sameContent treats a Renovate SHA pin as its @v1 tag', () => {
+  const sha = 'a'.repeat(40);
+  const tagged = 'uses: and3rn3t/.github/.github/workflows/x.yml@v1\n';
+  assert.ok(sameContent(`uses: and3rn3t/.github/.github/workflows/x.yml@${sha} # v1\n`, tagged));
+  assert.ok(!sameContent(`uses: and3rn3t/.github/.github/workflows/x.yml@${sha} # v2\n`, tagged));
+  assert.ok(!sameContent(tagged + 'extra\n', tagged));
 });

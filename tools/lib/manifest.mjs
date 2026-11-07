@@ -12,6 +12,11 @@ export const PYTPL = join(ROOT, 'tools', 'templates', 'python');
 export const GHTPL = join(ROOT, '.github', 'workflow-templates');
 export const SNAPSHOT = join(ROOT, '.consistency-snapshot.json');
 
+// Renovate pins `uses: owner/repo/path@v1` to `@<40-hex sha> # v1`. That is the
+// intended end state, not drift, so compare with pins collapsed back to their tag.
+export const normalizePins = text => text.replace(/@[0-9a-f]{40}(?:[ \t]+#[ \t]*(\S+))?/g, (_m, tag) => (tag ? `@${tag}` : '@pinned'));
+export const sameContent = (a, b) => a === b || normalizePins(a) === normalizePins(b);
+
 // Managed files. All created if-missing; `drift:true` means "worth flagging when
 // it exists but differs" (files that are meant to converge). Files expected to
 // diverge per-repo (renovate, LICENSE, .gitignore) have drift:false.
@@ -60,9 +65,10 @@ export const MANIFEST = [
   { dest: '.github/workflows/dependency-review.yml', src: join(TPL, '.github/workflows/dependency-review.yml'), types: ['all'], drift: false },
   // CodeQL — language-specific, so node and python get different source files.
   // Not wired up for xcode/other types yet (Swift/C++ CodeQL needs a working
-  // build step first; add manually if you want it there).
-  { dest: '.github/workflows/codeql.yml', src: join(TPL, '.github/workflows/codeql.yml'), types: ['node'],   drift: true },
-  { dest: '.github/workflows/codeql.yml', src: join(PYTPL, 'codeql.yml'),                 types: ['python'], drift: true },
+  // build step first; add manually if you want it there). drift:false because
+  // `languages` and the schedule are tuned per repo.
+  { dest: '.github/workflows/codeql.yml', src: join(TPL, '.github/workflows/codeql.yml'), types: ['node'],   drift: false },
+  { dest: '.github/workflows/codeql.yml', src: join(PYTPL, 'codeql.yml'),                 types: ['python'], drift: false },
   // Language-agnostic: every repo (including Xcode-only) should carry the PR-time
   // consistency guard so drift on the files above gets caught automatically.
   { dest: '.github/workflows/consistency.yml', src: join(GHTPL, 'consistency.yml'), types: ['all'], drift: true },
@@ -83,7 +89,7 @@ export const MANIFEST = [
 ];
 
 // Never treated as a sync target.
-export const SKIP = new Set(['ai-template-repo', '.github', '.git', 'tools', 'node_modules']);
+export const SKIP = new Set(['ai-template-repo', '.github', '.git', 'tools', 'docs', 'node_modules']);
 
 const hasXcode = (dir, depth) => {
   if (depth < 0) return false;
@@ -144,7 +150,7 @@ export function evaluate(repo) {
     if (!existsSync(item.src)) { items.push({ item, status: 'miss-src' }); continue; }
     const destPath = join(repoPath, item.dest);
     if (!existsSync(destPath)) { items.push({ item, status: ignored.has(item.dest) ? 'blessed' : 'missing' }); continue; }
-    if (readFileSync(destPath).equals(readFileSync(item.src))) { items.push({ item, status: 'ok' }); continue; }
+    if (sameContent(readFileSync(destPath, 'utf8'), readFileSync(item.src, 'utf8'))) { items.push({ item, status: 'ok' }); continue; }
     if (ignored.has(item.dest)) { items.push({ item, status: 'blessed' }); continue; }
     items.push({ item, status: item.drift ? 'drift' : 'vary' });
   }

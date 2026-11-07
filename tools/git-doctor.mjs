@@ -25,7 +25,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SKIP = new Set(['tools', 'node_modules']);
+const SKIP = new Set(['tools', 'docs', 'node_modules']);
 
 const args = process.argv.slice(2);
 const FIX = args.includes('--fix');

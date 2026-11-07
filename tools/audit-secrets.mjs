@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SKIP = new Set(['ai-template-repo', '.github', '.git', 'tools', 'node_modules']);
+const SKIP = new Set(['ai-template-repo', '.github', '.git', 'tools', 'docs', 'node_modules']);
 const OWNER = 'and3rn3t';
 
 const args = process.argv.slice(2);

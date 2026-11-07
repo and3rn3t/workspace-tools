@@ -58,7 +58,7 @@ export function validateWorkspace(ws = loadWorkspace()) {
     if (r.protection && !ws.policies?.protection?.[r.protection] && r.protection !== 'none') problems.push(`${name}: unknown protection policy "${r.protection}"`);
     if (r.release && !RELEASE.has(r.release)) problems.push(`${name}: release must be one of ${[...RELEASE].join(', ')}`);
     for (const [k, v] of Object.entries(r.security ?? {})) if (!(k in DEFAULT_SECURITY) || typeof v !== 'boolean') problems.push(`${name}: security.${k} must be one of ${Object.keys(DEFAULT_SECURITY).join(', ')} with a true/false value`);
-    if (!local.has(name) && !['.github', 'tools', 'ai-template-repo'].includes(name)) problems.push(`${name}: declared but no local folder`);
+    if (!local.has(name) && !['.github', 'tools', 'docs', 'ai-template-repo'].includes(name)) problems.push(`${name}: declared but no local folder`);
   }
   for (const name of local) if (!ws.repos?.[name]) problems.push(`${name}: local repo not declared in workspace.json (add an entry)`);
   return problems;
