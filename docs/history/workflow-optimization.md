@@ -1,5 +1,7 @@
 # Workflow Optimization Plan
 
+> **Historical snapshot (2026-07-02).** Repo tiers, push-order notes and "still needs Matt" items are outdated: activity tiers now come from `workspace.json`, and reusable workflows/Renovate presets are managed via `make plan` / `make apply` and `make renovate-tier`. See [`tools/README.md`](../../tools/README.md).
+
 _Reviewed 2026-07-02. Follows the completed CONSISTENCY-PLAN.md (Phases 1–5 done & pushed)._
 
 ## Done in this pass (2026-07-02 — working-tree edits, not committed/pushed)

@@ -1,5 +1,7 @@
 # Cloudflare Resource Inventory
 
+> **Point-in-time (2026-07-05).** Not regenerated automatically. For live deploy data see `make sites` (wrangler deploy inventory) and the hosted dashboard's Sites tab.
+
 A point-in-time map of every Worker, D1 database, KV namespace, and R2 bucket on the
 and3rn3t Cloudflare account, cross-referenced against what's actually bound in each
 repo's `wrangler.toml`. Generated 2026-07-05. Re-run this audit periodically — nothing

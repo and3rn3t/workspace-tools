@@ -1,5 +1,7 @@
 # Dependency Upgrade Playbook
 
+> **Point-in-time (2026-07-03).** Migration notes stay useful, but the per-repo priority tables are stale — run `make versions` and `make outdated` for current state, and `make merge-green` for pending bot PRs.
+
 Prioritized guide for clearing the outstanding **major** version bumps across the
 repos, with the real 2026 breaking changes for the upgrades that recur in several
 projects. Generated 2026-07-03 from `make outdated`.

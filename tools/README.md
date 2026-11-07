@@ -36,6 +36,8 @@ from the folder root via the top-level `Makefile`.
 | `make renovate-status` | Aggregate every repo's Renovate "Dependency Dashboard" issue into one sorted view of pending major-bump approvals |
 | `make report` / `report-quick` | One consolidated "morning report": refreshes `make meta`, then dashboard + git health + local git status + secrets audit + Renovate backlog + CI status (every failing workflow on each default branch). `-quick` skips anything needing the GitHub API |
 
+> **Convention:** a bare target is always a dry run; the `-apply` twin (`sync-apply`, `sync-update-apply`, `merge-green-apply`, `security-fix-apply`, `release-train-prepare`/`-apply`, `renovate-tier-apply`, `tidy-apply`, `secrets-sync-apply`, `git-doctor-fix`) is what changes files, GitHub or PRs. `make apply` is the `make plan` counterpart. `make report-quick` is the offline `make report`. `make test-tools` runs this tooling's own suite (`node --test tools/test/*.test.mjs`) — run it after editing anything in `tools/`.
+
 ## Automation
 
 - **Claude skill** — `.claude/skills/workspace/SKILL.md` (tracked here) maps cross-repo requests to these targets and says which ones need a go-ahead. Keep its table in step when adding a target.
@@ -69,11 +71,13 @@ propagate to repos that are missing them.
 
 ### Managed files
 
+_Drift ignores Renovate SHA pins_ (`uses: …@<sha> # v1` equals `@v1`), and `codeql.yml` is not drift-tracked because `languages` and the schedule are tuned per repo.
+
 | File | Applies to | Notes |
 |---|---|---|
 | `.editorconfig` | all | drift-tracked |
 | `SECURITY.md`, `LICENSE`, `.gitignore` | all | per-repo variants expected |
-| `.nvmrc` (24.13.0) | node | drift-tracked |
+| `.nvmrc` (24.22.2) | node | drift-tracked |
 | `commitlint.config.mjs`, `.lintstagedrc.json`, `.husky/commit-msg` | node | hook is drift-tracked |
 | `renovate.json` | node / python | per-repo variants expected (e.g. `guess`) |
 | `.pre-commit-config.yaml` | python | drift-tracked |

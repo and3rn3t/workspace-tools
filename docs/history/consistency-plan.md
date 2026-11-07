@@ -1,5 +1,7 @@
 # Repo Consistency Plan
 
+> **Historical record (phases 1–13, July 2026).** Everything here is done and now enforced by tooling — see [`tools/README.md`](../../tools/README.md) for how it works today (`make sync`, `make drift`, `workspace.json`). Kept for the reasoning behind decisions; do not treat the "Matt's manual steps" as current.
+
 Goal: bring all actively developed repos (commits since April 2026) to a common baseline, then backfill older repos opportunistically. Decisions locked in: **Node 24 LTS**, **Renovate everywhere**, **commitlint + husky on all active repos**.
 
 **Active repos (focus):** amiibo, and3rn3t, guess, health, homehub, huggingface

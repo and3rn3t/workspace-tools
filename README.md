@@ -10,32 +10,41 @@ audits and bootstraps them.
 
 ## Quick reference
 
-| Command | What it does |
-|---|---|
-| `make doctor` | List each repo's type (node/pnpm, node/npm, python, other), its available scripts, and flag lockfile drift |
-| `make status` | Git snapshot per repo: uncommitted file count, ahead/behind vs. upstream |
-| `make sync` | Dry-run: show baseline files that are **missing** from any repo |
-| `make sync-apply` | Create those missing files (never overwrites existing ones) |
-| `make drift` | Report files that **exist but differ** from the canonical template — for manual review |
-| `make dashboard` | Regenerate `dashboard.html` — a consistency scorecard across all repos |
-| `make new-repo NAME=x TYPE=node\|python` | Scaffold a new sibling repo from the template so it starts 100% consistent |
-| `make lint` / `build` / `test` / `typecheck` / `format` / `audit` | Fan the command out across all repos, auto-detecting the package manager |
-| `make outdated` | Per-repo snapshot of outdated npm/pnpm deps, highlighting major bumps |
+Run `make help` for the full list. The everyday ones:
 
-See [`tools/README.md`](tools/README.md) for full documentation: the
-non-destructive sync design, managed-files table, `.consistency-ignore`,
-reusable GitHub Actions workflows, and more.
+| Goal | Command |
+|---|---|
+| What needs attention? | `make report` (or `make report-quick`, no GitHub API) |
+| What got worse since last run? | `make watchdog` |
+| Missing / drifted baseline files | `make sync` · `make drift` · `make changes` (apply with `make sync-apply`) |
+| Repo settings vs `workspace.json` | `make plan` (then `make apply`) |
+| Bot PRs, security alerts, releases | `make merge-green` · `make security-fix` · `make release-train` |
+| Stack versions & shared-config adoption | `make versions` · `make outdated` |
+| Fan a command across all repos | `make lint\|build\|test\|typecheck\|format\|audit\|health` |
+| Dashboards | `make dashboard` (local `dashboard.html`) · `make export` (hosted) |
+| New repo | `make new-repo NAME=x TYPE=node\|python` |
+| This tooling's own tests | `make test-tools` |
+
+Every `*-apply` target changes something (files, GitHub, PRs); the bare target is
+always a dry run. Scope any target with `REPO=name`.
+
+## Documentation
+
+- [`tools/README.md`](tools/README.md) — canonical reference for every target and design decision
+- [`docs/README.md`](docs/README.md) — index of guides, runbooks, snapshots and history
+- [`CLAUDE.md`](CLAUDE.md) — generated repo map for AI assistants; `workspace.json` is its source
 
 ## Layout
 
 ```
-Makefile              # entry point — run `make help` for the full list
-tools/*.mjs           # the scripts each make target calls
-tools/templates/      # Python-specific baseline file variants
-CLAUDE.md             # project index of every sibling repo, for AI assistants
-CONSISTENCY-PLAN.md   # design notes: baseline-file consistency strategy
-DEPENDENCY-UPGRADE-PLAYBOOK.md
-WORKFLOW-OPTIMIZATION.md
+Makefile              # entry point (`make help`)
+workspace.json        # source of truth: repo tiers, summaries, settings
+tools/*.mjs           # scripts behind each make target
+tools/lib/            # shared manifest, helpers
+tools/test/           # node --test suite (`make test-tools`)
+tools/templates/      # Python baseline variants
+docs/                 # guides, runbooks, snapshots, history
+.claude/skills/       # `workspace` skill for Claude
 ```
 
 ## Requirements
