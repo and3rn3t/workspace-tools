@@ -2,16 +2,16 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MANIFEST, PYTPL, ROOT, evaluate, detectTypes, typeLabel, ignoredFor, sameContent } from '../lib/manifest.mjs';
+import { MANIFEST, PYTPL, TPL, evaluate, detectTypes, typeLabel, ignoredFor, sameContent } from '../lib/manifest.mjs';
 import { fixtureRepo, cleanupFixtures } from './fixtures/repo.mjs';
 
 after(cleanupFixtures);
 
-// Only template sources tracked in this repo (tools/templates) — CI has no
-// ai-template-repo / .github checkout, so those entries are miss-src there.
+// Template sources live in ai-template-repo (a sibling checkout locally; the
+// tools CI checks it out next to tools/ for the same layout).
 const CODEQL = readFileSync(join(PYTPL, 'codeql.yml'), 'utf8');
 const PRECOMMIT = readFileSync(join(PYTPL, '.pre-commit-config.yaml'), 'utf8');
-const CODEOWNERS = readFileSync(join(ROOT, 'tools', 'templates', 'CODEOWNERS'), 'utf8');
+const CODEOWNERS = readFileSync(join(TPL, '.github', 'CODEOWNERS'), 'utf8');
 const statusOf = (ev, dest) => ev.items.find(i => i.item.dest === dest)?.status;
 
 test('detectTypes / typeLabel', () => {

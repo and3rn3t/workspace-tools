@@ -8,8 +8,10 @@ import { fileURLToPath } from 'node:url';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const TPL = join(ROOT, 'ai-template-repo');
-export const PYTPL = join(ROOT, 'tools', 'templates', 'python');
-export const GHTPL = join(ROOT, '.github', 'workflow-templates');
+// Every baseline source lives in ai-template-repo: shared files at its root,
+// per-stack files under profiles/. (.github/workflow-templates keeps copies only
+// for GitHub's "New workflow" UI — it is not a sync source.)
+export const PYTPL = join(TPL, 'profiles', 'python');
 export const SNAPSHOT = join(ROOT, '.consistency-snapshot.json');
 
 // Renovate pins `uses: owner/repo/path@v1` to `@<40-hex sha> # v1`. That is the
@@ -43,10 +45,9 @@ export const MANIFEST = [
   // (uppercase) — GitHub recognizes either casing, and this entry only fires
   // where neither casing exists yet.
   { dest: '.github/pull_request_template.md', src: join(TPL, '.github/pull_request_template.md'), types: ['all'], drift: false },
-  // Default review owner. Sourced from tools/templates (a clean one-liner) rather
-  // than ai-template-repo's commented-out example file; drift:false because
-  // repos like homehub/catastrophe carry richer path-specific rules.
-  { dest: '.github/CODEOWNERS', src: join(ROOT, 'tools', 'templates', 'CODEOWNERS'), types: ['all'], drift: false },
+  // Default review owner (`* @and3rn3t`). drift:false because repos like
+  // homehub/catastrophe carry richer path-specific rules.
+  { dest: '.github/CODEOWNERS', src: join(TPL, '.github/CODEOWNERS'), types: ['all'], drift: false },
   // Label taxonomy + auto-labeling. label-sync uses delete-other-labels:false,
   // so it only adds/updates — never removes a repo's existing custom labels.
   { dest: '.github/labels.yml',                 src: join(TPL, '.github/labels.yml'),                 types: ['all'], drift: true  },
@@ -71,21 +72,24 @@ export const MANIFEST = [
   { dest: '.github/workflows/codeql.yml', src: join(PYTPL, 'codeql.yml'),                 types: ['python'], drift: false },
   // Language-agnostic: every repo (including Xcode-only) should carry the PR-time
   // consistency guard so drift on the files above gets caught automatically.
-  { dest: '.github/workflows/consistency.yml', src: join(GHTPL, 'consistency.yml'), types: ['all'], drift: true },
+  { dest: '.github/workflows/consistency.yml', src: join(TPL, '.github/workflows/consistency.yml'), types: ['all'], drift: true },
   // Same logic for secret scanning — every repo, regardless of language.
-  { dest: '.github/workflows/gitleaks.yml', src: join(GHTPL, 'gitleaks.yml'), types: ['all'], drift: true },
+  { dest: '.github/workflows/gitleaks.yml', src: join(TPL, '.github/workflows/gitleaks.yml'), types: ['all'], drift: true },
   // Stale-issue/PR closer. drift:false — repos are free to hand-tune their own
   // thresholds/messages once created (see weather-app's richer version, which
   // predates this and is intentionally left alone rather than overwritten).
-  { dest: '.github/workflows/stale.yml', src: join(GHTPL, 'stale.yml'), types: ['all'], drift: false },
+  { dest: '.github/workflows/stale.yml', src: join(TPL, '.github/workflows/stale.yml'), types: ['all'], drift: false },
   // Validates every other workflow file's YAML against the real Actions
   // schema — caught a real bug in reusable-cloudflare-pages-deploy.yml's
   // first draft, so it earns its place as a universal baseline file too.
-  { dest: '.github/workflows/actionlint.yml', src: join(GHTPL, 'actionlint.yml'), types: ['all'], drift: true },
+  { dest: '.github/workflows/actionlint.yml', src: join(TPL, '.github/workflows/actionlint.yml'), types: ['all'], drift: true },
   // Shared Claude Code project settings: read-only git/gh and lint/test/build
   // commands pre-allowed, .env/.dev.vars reads denied. drift:false — repos add
   // their own allow rules (deploy scripts, repo-specific tools) on top.
   { dest: '.claude/settings.json', src: join(TPL, '.claude/settings.json'), types: ['all'], drift: false },
+  // The PostToolUse hook settings.json points at (format edited files with the
+  // repo's Prettier; silent no-op without one). drift:true — meant to converge.
+  { dest: '.claude/hooks/format-edited-file.sh', src: join(TPL, '.claude/hooks/format-edited-file.sh'), types: ['all'], drift: true, exec: true },
 ];
 
 // Never treated as a sync target.
