@@ -11,9 +11,9 @@
 // nothing missing afterwards), the AI instruction files, and the stack profile
 // (ai-template-repo/profiles/web for node, profiles/python for python).
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execFileSync } from 'node:child_process';
 import { ROOT, TPL, PYTPL, MANIFEST, applies } from './lib/manifest.mjs';
 
 const WEBTPL = join(TPL, 'profiles', 'web');
@@ -31,11 +31,11 @@ if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) { console.error(`refusing: "${name}" —
 const dest = join(ROOT, name);
 if (existsSync(dest)) { console.error(`refusing: ${name}/ already exists`); process.exit(1); }
 
-const listFiles = dir => readdirSync(dir).flatMap(entry => {
-  const full = join(dir, entry);
-  return statSync(full).isDirectory() ? listFiles(full) : [full];
-});
-const fromDir = (dir, { exclude = [] } = {}) => listFiles(dir)
+// Only git-tracked template files — never node_modules/, dist/ or other output
+// left behind by validating a profile in place.
+const trackedFiles = dir => execFileSync('git', ['-C', TPL, 'ls-files', '-z', '--', relative(TPL, dir)], { encoding: 'utf8' })
+  .split('\0').filter(Boolean).map(p => join(TPL, p));
+const fromDir = (dir, { exclude = [] } = {}) => trackedFiles(dir)
   .map(full => ({ to: relative(dir, full), from: full }))
   .filter(f => !exclude.includes(f.to));
 const fill = s => s.replaceAll(PLACEHOLDER, name);
@@ -67,7 +67,7 @@ const generated = [
   { to: 'CHANGELOG.md', content: '# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n\n## [Unreleased]\n\n### Added\n\n- Initial project scaffold from ai-template-repo\n' },
   { to: 'README.md', content: `# ${name}\n\n**One sentence: what it is and who it's for.**\n\n## Getting started\n\n\`\`\`bash\n${type === 'node' ? 'pnpm install\npnpm dev' : 'pip install -e ".[dev]"\npytest'}\n\`\`\`\n\n## License\n\nMIT — see [LICENSE](LICENSE).\n` },
   ...(type === 'python'
-    ? [{ to: 'pyproject.toml', content: `[project]\nname = "${name}"\nversion = "0.0.0"\nrequires-python = ">=3.10"\n\n[project.optional-dependencies]\ndev = ["pytest", "ruff"]\n\n[tool.ruff]\nline-length = 100\n` }]
+    ? [{ to: 'pyproject.toml', content: `[project]\nname = "${name}"\nversion = "0.0.0"\nrequires-python = ">=3.10"\n\n[project.optional-dependencies]\ndev = ["pytest", "ruff", "pre-commit"]\n\n[tool.ruff]\nline-length = 100\n` }]
     : []),
 ];
 
