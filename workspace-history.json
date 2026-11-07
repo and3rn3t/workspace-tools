@@ -83,9 +83,29 @@
     "date": "2026-11-05",
     "consistency": 95,
     "active_consistency": 93,
-    "active_presentation": 77,
-    "failing_workflows_active": 18,
-    "ci_pass_rate_7d_active": 87,
+    "active_presentation": 80,
+    "failing_workflows_active": 10,
+    "ci_pass_rate_7d_active": 91,
+    "pending_changes": 5,
+    "active": 13
+  },
+  {
+    "date": "2026-11-06",
+    "consistency": 95,
+    "active_consistency": 93,
+    "active_presentation": 80,
+    "failing_workflows_active": 9,
+    "ci_pass_rate_7d_active": 92,
+    "pending_changes": 5,
+    "active": 13
+  },
+  {
+    "date": "2026-11-07",
+    "consistency": 95,
+    "active_consistency": 93,
+    "active_presentation": 80,
+    "failing_workflows_active": 9,
+    "ci_pass_rate_7d_active": 91,
     "pending_changes": 5,
     "active": 13
   }
