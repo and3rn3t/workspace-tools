@@ -25,7 +25,7 @@ from the folder root via the top-level `Makefile`.
 | `make watchdog` | Refresh + export, then compare with the previous run (`.dashboard-data/watchdog-state.json`) and print only what got worse — a site down, new critical alerts, a workflow red 24h+, a newly flaky workflow, a newly breached budget, and a weekly reminder while a security alert stays past its SLA — plus recoveries; `quiet` when nothing changed. Meant for a daily scheduled task that notifies only when the output isn't `quiet` |
 | `make tidy` / `tidy-apply` | Local hygiene across every clone: back to the default branch once a PR is merged/closed, fast-forward the default branch, delete fully-merged local branches, prune stale worktrees (only in clones without uncommitted changes; nothing pushed), then clear empty stale locks. Also nudges releases when a release-drafter draft has waited 30+ days |
 | `make meta` | Refresh `.github-meta.json` (gitignored): one GraphQL query per repo (description, homepage, topics, protection, latest *published* release, open PRs by author, open issues) plus paginated Dependabot alerts by severity, and REST for rulesets, per-workflow CI on the default branch, code-scanning and secret-scanning alerts. Feeds presentation scoring, `make plan` and the export |
-| `make new-repo NAME=x TYPE=node\|python` | Scaffold a new sibling repo from the template so it starts 100% consistent |
+| `make new-repo NAME=x TYPE=node\|python` | Scaffold a new sibling repo (creates it — preview with `node tools/new-repo.mjs x --type=node`): every manifest file for the type, the AI instruction files and `.claude/skills`, plus the stack profile (`profiles/web` = working React+Vite+Workers starter). `make sync REPO=x` reports 0 missing / 0 drift right after |
 | `make lint` / `build` / `test` / `typecheck` / `format` / `audit` | Fan the command out across all repos, auto-detecting the package manager |
 | `make outdated` | Per-repo snapshot of outdated npm/pnpm deps, highlighting major bumps (needs installed deps; Python not included) |
 | `make secrets-audit` | Cross-check every repo's `.github/workflows/*.yml` for `secrets.X` references against the Actions secrets actually configured on GitHub (via `gh`/API) — flags what's referenced but never set |
@@ -64,10 +64,12 @@ The managed-file manifest, type detection, `.consistency-ignore` handling and pe
 
 The root `.gitignore` ignores every top-level folder except `tools/` (`/*/` + `!/tools/`), so newly cloned repos never show up as untracked here; `make sync` tags repos missing from the last snapshot as **NEW**.
 
-Shared and Node baseline files come from **`ai-template-repo/`**. Python variants
-(a slimmer `renovate.json` and the `conventional-pre-commit` config) live in
-`tools/templates/python/`. Update those sources, then `make sync-apply` to
-propagate to repos that are missing them.
+**Every** baseline source lives in **`ai-template-repo/`**: shared files at its
+root, stack files in `profiles/web/` and `profiles/python/` (python `renovate.json`,
+`.pre-commit-config.yaml`, `codeql.yml`, `ci.yml`). `.github/workflow-templates/`
+keeps copies only for GitHub's "New workflow" UI — it is not a sync source. Update
+the file in `ai-template-repo`, then `make sync-apply` (missing files) or
+`make sync-update FILE=…` (drifted copies) to propagate.
 
 ### Managed files
 
@@ -85,15 +87,16 @@ _Drift ignores Renovate SHA pins_ (`uses: …@<sha> # v1` equals `@v1`), and `co
 | `.github/workflows/gitleaks.yml` | all (incl. Xcode) | drift-tracked — scans every push/PR for committed secrets via `reusable-gitleaks.yml`. **Note**: `gitleaks-action@v2` is free for public repos but needs a `GITLEAKS_LICENSE` secret for private ones — confirm each repo's visibility before assuming this runs clean. |
 | `.github/workflows/stale.yml` | all (incl. Xcode) | not drift-tracked — hand-tune freely once created (see `weather-app`'s richer version) |
 | `.claude/settings.json` | all (incl. Xcode) | not drift-tracked — shared Claude Code permissions: read-only git/gh plus lint/type-check/test/build/format pre-allowed, `.env*` / `.dev.vars` reads denied. Repos add their own rules on top; personal ones go in the untracked `settings.local.json` |
+| `.claude/hooks/format-edited-file.sh` | all (incl. Xcode) | drift-tracked — the PostToolUse hook `.claude/settings.json` points at; runs the repo's own Prettier on edited files, silent no-op without one |
 | `.github/workflows/actionlint.yml` | all (incl. Xcode) | drift-tracked — validates every other workflow file against the real Actions schema |
-| `.github/CODEOWNERS` | all | from `tools/templates/CODEOWNERS` (`* @and3rn3t`); not drift-tracked — richer path rules (homehub, catastrophe) are fine |
+| `.github/CODEOWNERS` | all | from `ai-template-repo/.github/CODEOWNERS` (`* @and3rn3t`); not drift-tracked — richer path rules (homehub, catastrophe) are fine |
 | `.github/pull_request_template.md` | all | skips repos already carrying either casing (`PULL_REQUEST_TEMPLATE.md` also recognized by GitHub) |
 | `.github/labels.yml`, `.github/workflows/label-sync.yml` | all | label taxonomy (type/status/priority/size); sync uses `delete-other-labels: false`, only adds/updates |
 | `.github/labeler.yml`, `.github/workflows/labeler.yml` | all | auto-labels PRs by changed file path |
 | `.github/release-drafter.yml`, `.github/workflows/release-drafter.yml` | all | drafts (never publishes) release notes from merged PR labels |
 | `.github/workflows/lighthouse.yml` | all | the disabled-by-default stub from `ai-template-repo` (workflow_dispatch only, no-op job) — **not** the org `workflow-templates` version, which actively schedules a run against a placeholder URL |
 | `.github/workflows/dependency-review.yml` | all | calls `and3rn3t/.github`'s reusable workflow; no-op if there's nothing to review |
-| `.github/workflows/codeql.yml` | node / python | language-specific source (`ai-template-repo` for JS/TS, `tools/templates/python/codeql.yml` for Python); not wired up for xcode/other types — Swift/C++ CodeQL needs a working build step first |
+| `.github/workflows/codeql.yml` | node / python | language-specific source (`ai-template-repo` for JS/TS, `ai-template-repo/profiles/python/codeql.yml` for Python); not wired up for xcode/other types — Swift/C++ CodeQL needs a working build step first |
 
 **Not managed** (inherently repo-specific): `AGENTS.md`, `CLAUDE.md`, ESLint,
 `tsconfig`, Prettier, and the main CI workflow (`ci.yml`/`quality.yml`/etc. — every
