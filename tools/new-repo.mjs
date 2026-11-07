@@ -6,16 +6,18 @@
 //
 // Dry-run by default (prints the plan). Pass --apply to create the folder,
 // copy baseline files, and `git init`. Node is the default type.
+//
+// Sources: every MANIFEST entry that applies to the type (so `make sync` reports
+// nothing missing afterwards), the AI instruction files, and the stack profile
+// (ai-template-repo/profiles/web for node, profiles/python for python).
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync, readdirSync, statSync } from 'node:fs';
+import { join, dirname, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { ROOT, TPL, PYTPL, MANIFEST, applies } from './lib/manifest.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const TPL = join(ROOT, 'ai-template-repo');
-const PYTPL = join(ROOT, 'tools', 'templates', 'python');
-const GHTPL = join(ROOT, '.github', 'workflow-templates');
+const WEBTPL = join(TPL, 'profiles', 'web');
+const PLACEHOLDER = 'replace-project-name';
 
 const args = process.argv.slice(2);
 const name = args.find(a => !a.startsWith('--'));
@@ -24,67 +26,77 @@ const APPLY = args.includes('--apply');
 
 if (!name) { console.error('usage: node tools/new-repo.mjs <name> [--type=node|python] [--apply]'); process.exit(2); }
 if (!['node', 'python'].includes(type)) { console.error(`unknown --type=${type} (use node|python)`); process.exit(2); }
+if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) { console.error(`refusing: "${name}" — use lowercase letters, digits and dashes (npm + wrangler naming)`); process.exit(2); }
 
 const dest = join(ROOT, name);
 if (existsSync(dest)) { console.error(`refusing: ${name}/ already exists`); process.exit(1); }
 
-// Files every new repo gets, by type.
-const COMMON = [
-  { to: '.editorconfig',  from: join(TPL, '.editorconfig') },
-  { to: '.gitignore',     from: join(TPL, '.gitignore') },
-  { to: 'SECURITY.md',    from: join(TPL, 'SECURITY.md') },
-  { to: 'LICENSE',        from: join(TPL, 'LICENSE') },
-  { to: 'AGENTS.md',      from: join(TPL, 'AGENTS.md') },
-  { to: 'CLAUDE.md',      from: join(TPL, 'CLAUDE.md') },
-];
+const listFiles = dir => readdirSync(dir).flatMap(entry => {
+  const full = join(dir, entry);
+  return statSync(full).isDirectory() ? listFiles(full) : [full];
+});
+const fromDir = (dir, { exclude = [] } = {}) => listFiles(dir)
+  .map(full => ({ to: relative(dir, full), from: full }))
+  .filter(f => !exclude.includes(f.to));
+const fill = s => s.replaceAll(PLACEHOLDER, name);
+
+// 1. Baseline: exactly what the consistency manifest expects for this type.
+const baseline = MANIFEST
+  .filter(m => applies(m.types, new Set([type])))
+  .map(m => ({ to: m.dest, from: m.src, exec: m.exec }));
+
+// 2. AI instructions + editor files every repo gets (repo-specific after creation, so not in the manifest).
+const shared = [
+  'AGENTS.md', 'CLAUDE.md', '.github/copilot-instructions.md', '.cursor/rules/project.mdc',
+  '.gitattributes', '.vscode/extensions.json', '.vscode/settings.json',
+].map(p => ({ to: p, from: join(TPL, p) }))
+  .concat(fromDir(join(TPL, '.claude', 'skills')).map(f => ({ ...f, to: join('.claude', 'skills', f.to) })));
+
+// 3. Stack profile + its CI.
 const NODE = [
-  { to: '.nvmrc',                from: join(TPL, '.nvmrc') },
-  { to: 'commitlint.config.mjs', from: join(TPL, 'commitlint.config.mjs') },
-  { to: '.lintstagedrc.json',    from: join(TPL, '.lintstagedrc.json') },
-  { to: '.husky/commit-msg',     from: join(TPL, '.husky/commit-msg'), exec: true },
-  { to: 'renovate.json',         from: join(TPL, 'renovate.json') },
+  ...fromDir(WEBTPL, { exclude: ['README.md'] }).map(f => ({ ...f, rewrite: fill })),
+  ...['.husky/pre-commit', '.husky/pre-push'].map(p => ({ to: p, from: join(TPL, p), exec: true })),
+  ...['Makefile', '.env.example', '.dev.vars.example', '.devcontainer/devcontainer.json'].map(p => ({ to: p, from: join(TPL, p) })),
+  { to: '.github/workflows/ci.yml', from: join(TPL, '.github/workflows/ci.yml') },
 ];
 const PY = [
-  { to: 'renovate.json',           from: join(PYTPL, 'renovate.json') },
-  { to: '.pre-commit-config.yaml', from: join(PYTPL, '.pre-commit-config.yaml') },
+  { to: '.github/workflows/ci.yml', from: join(PYTPL, 'ci.yml') },
 ];
 
-// Every new repo gets CI + the PR-time consistency guard from day one — the
-// same coverage `make sync-apply` now backfills onto existing repos. The
-// $default-branch token in the shared CI templates is a GitHub "create from
-// template" substitution that doesn't apply to a plain file copy, so it's
-// rewritten to `main` here.
-const CI = [
-  { to: '.github/workflows/ci.yml', from: join(GHTPL, type === 'node' ? 'node-ci.yml' : 'python-ci.yml'), rewrite: s => s.replace(/\$default-branch/g, 'main') },
-  { to: '.github/workflows/consistency.yml', from: join(GHTPL, 'consistency.yml') },
-  { to: '.github/workflows/gitleaks.yml', from: join(GHTPL, 'gitleaks.yml') },
-  { to: '.github/workflows/stale.yml', from: join(GHTPL, 'stale.yml') },
-  { to: '.github/workflows/actionlint.yml', from: join(GHTPL, 'actionlint.yml') },
+const generated = [
+  { to: 'CHANGELOG.md', content: '# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n\n## [Unreleased]\n\n### Added\n\n- Initial project scaffold from ai-template-repo\n' },
+  { to: 'README.md', content: `# ${name}\n\n**One sentence: what it is and who it's for.**\n\n## Getting started\n\n\`\`\`bash\n${type === 'node' ? 'pnpm install\npnpm dev' : 'pip install -e ".[dev]"\npytest'}\n\`\`\`\n\n## License\n\nMIT — see [LICENSE](LICENSE).\n` },
+  ...(type === 'python'
+    ? [{ to: 'pyproject.toml', content: `[project]\nname = "${name}"\nversion = "0.0.0"\nrequires-python = ">=3.10"\n\n[project.optional-dependencies]\ndev = ["pytest", "ruff"]\n\n[tool.ruff]\nline-length = 100\n` }]
+    : []),
 ];
 
-const files = [...COMMON, ...(type === 'node' ? NODE : PY), ...CI];
-const starter = type === 'node'
-  ? { to: 'package.json', content: JSON.stringify({ name, version: '0.0.0', private: true, type: 'module', engines: { node: '>=24' }, scripts: { lint: 'echo "TODO: lint"', build: 'echo "TODO: build"', test: 'echo "TODO: test"', prepare: 'husky' } }, null, 2) + '\n' }
-  : { to: 'pyproject.toml', content: `[project]\nname = "${name}"\nversion = "0.0.0"\nrequires-python = ">=3.10"\n\n[tool.ruff]\nline-length = 100\n` };
+// Later entries win on the same path (e.g. profile files over shared ones).
+const byPath = new Map();
+for (const f of [...baseline, ...shared, ...(type === 'node' ? NODE : PY), ...generated]) byPath.set(f.to, f);
+const files = [...byPath.values()].sort((a, b) => a.to.localeCompare(b.to));
 
-console.log(`${APPLY ? 'Creating' : 'Plan for'} new ${type} repo: ${name}/`);
-files.forEach(f => console.log(`  + ${f.to}`));
-console.log(`  + ${starter.to} (starter)`);
-console.log(APPLY ? '' : '\ndry-run — pass --apply to create');
+const missingSources = files.filter(f => f.from && !existsSync(f.from));
+if (missingSources.length) {
+  console.error('refusing: template sources not found (is ai-template-repo cloned next to tools/?):');
+  missingSources.forEach(f => console.error(`  ${relative(ROOT, f.from)}`));
+  process.exit(1);
+}
 
-if (!APPLY) process.exit(0);
+console.log(`${APPLY ? 'Creating' : 'Plan for'} new ${type} repo: ${name}/  (${files.length} files)`);
+files.forEach(f => console.log(`  + ${f.to}${f.content ? ' (generated)' : ''}`));
+if (!APPLY) { console.log('\ndry-run — pass --apply to create'); process.exit(0); }
 
 mkdirSync(dest, { recursive: true });
 for (const f of files) {
   const target = join(dest, f.to);
   mkdirSync(dirname(target), { recursive: true });
-  const content = f.rewrite ? f.rewrite(readFileSync(f.from, 'utf8')) : readFileSync(f.from);
+  const content = f.content ?? (f.rewrite ? f.rewrite(readFileSync(f.from, 'utf8')) : readFileSync(f.from));
   writeFileSync(target, content);
   if (f.exec) chmodSync(target, 0o755);
 }
-writeFileSync(join(dest, starter.to), starter.content);
-const gi = spawnSync('git', ['-C', dest, 'init', '-q'], { encoding: 'utf8' });
-console.log(gi.status === 0 ? 'git initialized.' : 'note: git init skipped (git unavailable).');
-console.log(`\nDone. Next:`);
-console.log(`  cd ${name} && ${type === 'node' ? 'npm install' : 'pip install pre-commit && pre-commit install --hook-type commit-msg'}`);
-console.log(`  edit AGENTS.md / CLAUDE.md for this repo, then run  make dashboard  to confirm it lands green.`);
+const gi = spawnSync('git', ['-C', dest, 'init', '-q', '-b', 'main'], { encoding: 'utf8' });
+console.log(gi.status === 0 ? 'git initialized (main).' : 'note: git init skipped (git unavailable).');
+console.log('\nDone. Next:');
+console.log(`  cd ${name} && ${type === 'node' ? 'pnpm install && pnpm validate' : 'pip install -e ".[dev]" && pre-commit install --hook-type commit-msg'}`);
+console.log('  fill in the Project Overview in AGENTS.md, then  make sync REPO=' + name + '  should report nothing missing.');

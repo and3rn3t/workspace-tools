@@ -51,7 +51,7 @@
     },
     "ai-template-repo": {
       "group": "meta",
-      "summary": "Canonical AI-assisted dev template (CLAUDE.md, AGENTS.md, Copilot/Cursor configs) — baseline for new repos",
+      "summary": "Single source for every baseline file: AGENTS.md/CLAUDE.md, CI, hooks, community files, plus `profiles/web` (tested React+Vite+Workers starter) and `profiles/python` — `make new-repo` / `make sync` read from here",
       "featured": false,
       "github": {
         "description": "",
